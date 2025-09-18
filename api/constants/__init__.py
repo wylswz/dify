@@ -39,3 +39,5 @@ else:
         "properties",
     ]
 DOCUMENT_EXTENSIONS = _doc_extensions + [ext.upper() for ext in _doc_extensions]
+
+DIFY_SESSION_ID_COOKIE_NAME = "DIFY_SESSION_ID"

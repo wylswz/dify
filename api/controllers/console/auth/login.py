@@ -1,3 +1,4 @@
+from services.auth.session import Session
 from typing import cast
 
 import flask_login
@@ -7,6 +8,7 @@ from flask_restx import Resource, reqparse
 import services
 from configs import dify_config
 from constants.languages import languages
+from constants import DIFY_SESSION_ID_COOKIE_NAME
 from controllers.console import api
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -32,6 +34,9 @@ from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
+from services.auth.session import (
+    SessionManager,
+)
 
 
 class LoginApi(Resource):
@@ -231,9 +236,23 @@ class RefreshTokenApi(Resource):
             return {"result": "fail", "data": str(e)}, 401
 
 
+class SessionTokenApi(Resource):
+    def get(self):
+        session_id = request.cookies.get(DIFY_SESSION_ID_COOKIE_NAME)
+        if not session_id:
+            return {"result": "fail", "data": "no session"}, 401
+        session: Session | None = SessionManager.get_session(session_id)
+        if not session:
+            return {"result": "fail", "data": "no session"}, 401
+        return {"result": "success", "data": {
+            "access_token": session.get_access_token(),
+            "refresh_token": session.get_refresh_token(),
+        }}
+
 api.add_resource(LoginApi, "/login")
 api.add_resource(LogoutApi, "/logout")
 api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
 api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
 api.add_resource(ResetPasswordSendEmailApi, "/reset-password")
 api.add_resource(RefreshTokenApi, "/refresh-token")
+api.add_resource(SessionTokenApi, "/session-token")

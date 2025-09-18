@@ -9,6 +9,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import languages
+from constants import DIFY_SESSION_ID_COOKIE_NAME
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -17,6 +18,7 @@ from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models import Account
 from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
+from services.auth.session import SessionManager
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
@@ -151,9 +153,11 @@ class OAuthCallback(Resource):
             ip_address=extract_remote_ip(request),
         )
 
-        return redirect(
-            f"{dify_config.CONSOLE_WEB_URL}?access_token={token_pair.access_token}&refresh_token={token_pair.refresh_token}"
-        )
+        session = SessionManager.create_session_from_token(account.id, token_pair.access_token, token_pair.refresh_token)
+        location = f"{dify_config.CONSOLE_WEB_URL}?use_session=true"
+        resp = redirect(location)
+        resp.set_cookie(DIFY_SESSION_ID_COOKIE_NAME, session.id, secure=True, httponly=True, samesite='Lax')
+        return resp
 
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Account | None:
