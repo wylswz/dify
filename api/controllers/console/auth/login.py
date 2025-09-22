@@ -6,6 +6,7 @@ from flask_restx import Resource, reqparse
 
 import services
 from configs import dify_config
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -95,7 +96,7 @@ class LoginApi(Resource):
         # Set HTTP-only secure cookies for tokens
         # Max age is 30 days for refresh token
         response.set_cookie(
-            "access_token",
+            COOKIE_NAME_ACCESS_TOKEN,
             value=token_pair.access_token,
             httponly=True,
             secure=request.is_secure,  # Use secure flag in production (HTTPS)
@@ -104,7 +105,7 @@ class LoginApi(Resource):
             path="/",
         )
         response.set_cookie(
-            "refresh_token",
+            COOKIE_NAME_REFRESH_TOKEN,
             value=token_pair.refresh_token,
             httponly=True,
             secure=request.is_secure,
@@ -128,8 +129,22 @@ class LogoutApi(Resource):
             response = make_response({"result": "success"})
 
         # Clear cookies on logout
-        response.set_cookie("access_token", "", expires=0, path="/", secure=True, httponly=True, samesite="Lax")
-        response.set_cookie("refresh_token", "", expires=0, path="/", secure=True, httponly=True, samesite="Lax")
+        response.set_cookie(
+            COOKIE_NAME_ACCESS_TOKEN, 
+            "",
+            expires=0, 
+            path="/", 
+            secure=True, 
+            httponly=True, 
+            samesite="Lax")
+        response.set_cookie(
+            COOKIE_NAME_REFRESH_TOKEN, 
+            "", 
+            expires=0, 
+            path="/", 
+            secure=True, 
+            httponly=True, 
+            samesite="Lax")
 
         return response
 
@@ -253,7 +268,7 @@ class EmailCodeLoginApi(Resource):
 
         # Set HTTP-only secure cookies for tokens
         response.set_cookie(
-            "access_token",
+            COOKIE_NAME_ACCESS_TOKEN,
             value=token_pair.access_token,
             httponly=True,
             secure=request.is_secure,
@@ -262,7 +277,7 @@ class EmailCodeLoginApi(Resource):
             path="/",
         )
         response.set_cookie(
-            "refresh_token",
+            COOKIE_NAME_REFRESH_TOKEN,
             value=token_pair.refresh_token,
             httponly=True,
             secure=request.is_secure,
@@ -290,7 +305,7 @@ class RefreshTokenApi(Resource):
 
             # Update cookies with new tokens
             response.set_cookie(
-                "access_token",
+                COOKIE_NAME_ACCESS_TOKEN,
                 value=new_token_pair.access_token,
                 httponly=True,
                 secure=request.is_secure,
@@ -299,7 +314,7 @@ class RefreshTokenApi(Resource):
                 path="/",
             )
             response.set_cookie(
-                "refresh_token",
+                COOKIE_NAME_REFRESH_TOKEN,
                 value=new_token_pair.refresh_token,
                 httponly=True,
                 secure=request.is_secure,
