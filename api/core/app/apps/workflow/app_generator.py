@@ -26,7 +26,7 @@ from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTas
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.db.session_factory import session_factory
-from core.helper.trace_id_helper import extract_external_trace_id_from_args
+from core.helper.trace_id_helper import extract_external_parent_span_id_from_args, extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
@@ -149,6 +149,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         extras = {
             **extract_external_trace_id_from_args(args),
+            **extract_external_parent_span_id_from_args(args),
         }
         workflow_run_id = str(uuid.uuid4())
         # FIXME (Yeuoly): we need to remove the SKIP_PREPARE_USER_INPUTS_KEY from the args

@@ -77,6 +77,11 @@ class ToolNode(Node[ToolNodeData]):
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self.tenant_id, self.app_id, self._node_id, self.node_data, self.invoke_from, variable_pool
             )
+            # Add node execution ID to runtime parameters for workflow-as-tool tracing
+            # This allows the nested workflow to use the correct parent span ID
+            node_execution_id = self.ensure_execution_id()
+            if tool_runtime.runtime:
+                tool_runtime.runtime.runtime_parameters["_node_execution_id"] = node_execution_id
         except ToolNodeError as e:
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(

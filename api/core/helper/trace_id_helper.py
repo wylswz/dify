@@ -49,7 +49,7 @@ def get_external_trace_id(request: Any) -> str | None:
     return None
 
 
-def extract_external_trace_id_from_args(args: Mapping[str, Any]):
+def extract_external_trace_id_from_args(args: Mapping[str, Any]) -> dict[str, str]:
     """
     Extract 'external_trace_id' from args.
 
@@ -58,6 +58,21 @@ def extract_external_trace_id_from_args(args: Mapping[str, Any]):
     trace_id = args.get("external_trace_id")
     if trace_id:
         return {"external_trace_id": trace_id}
+    return {}
+
+
+def extract_external_parent_span_id_from_args(args: Mapping[str, Any]) -> dict[str, str]:
+    """
+    Extract 'external_parent_span_id' from args.
+
+    This is used for workflow-as-tool scenarios where the nested workflow's
+    root span should be a child of the invoking tool node's span.
+
+    Returns a dict suitable for use in extras. Returns an empty dict if not found.
+    """
+    span_id = args.get("external_parent_span_id")
+    if span_id:
+        return {"external_parent_span_id": span_id}
     return {}
 
 

@@ -554,3 +554,30 @@ def convert_datetime_to_nanoseconds(dt: datetime | None) -> int | None:
         return None
     timestamp_in_seconds = dt.timestamp()
     return int(timestamp_in_seconds * 1e9)
+
+
+def convert_hex_span_id_to_int(span_id_hex: str | None) -> int:
+    """
+    Convert a hex span ID string (16 characters) to a 64-bit integer.
+
+    This is used for workflow-as-tool scenarios where the parent span ID
+    is passed as a hex string from the OTEL context.
+
+    Args:
+        span_id_hex: A 16-character hex string representing a span ID.
+
+    Returns:
+        64-bit integer span ID.
+
+    Raises:
+        ValueError: If the span ID is invalid.
+    """
+    if span_id_hex is None:
+        raise ValueError("Span ID cannot be None")
+    try:
+        # Handle both with and without '0x' prefix
+        if span_id_hex.startswith("0x") or span_id_hex.startswith("0X"):
+            return int(span_id_hex, 16)
+        return int(span_id_hex, 16)
+    except ValueError as e:
+        raise ValueError(f"Invalid span ID format: {span_id_hex}") from e

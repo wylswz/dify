@@ -9,8 +9,9 @@ from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from core.helper.trace_id_helper import get_trace_id_from_otel_context
+from core.helper.trace_id_helper import get_span_id_from_otel_context, get_trace_id_from_otel_context
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
+from core.ops.enterprise.client import convert_to_span_id
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
@@ -92,14 +93,36 @@ class WorkflowTool(Tool):
         self._latest_usage = LLMUsage.empty_usage()
 
         external_trace_id = get_trace_id_from_otel_context()
+        # For workflow-as-tool, use the node execution ID to generate the correct parent span ID
+        # The tool node span is created with convert_to_span_id(node_execution_id, "node")
+        # so we need to use the same format to ensure the parent span ID matches
+        external_parent_span_id = None
+        if self.runtime and self.runtime.runtime_parameters:
+            node_execution_id = self.runtime.runtime_parameters.get("_node_execution_id")
+            if node_execution_id:
+                # Convert node execution ID to span ID using the same format as enterprise tracer
+                # This ensures the parent span ID matches the actual tool node span ID
+                try:
+                    span_id_int = convert_to_span_id(node_execution_id, "node")
+                    # Convert back to hex string for passing through the system
+                    external_parent_span_id = f"{span_id_int:016x}"
+                except Exception:
+                    logger.debug("Failed to convert node_execution_id to span ID, falling back to OTEL context")
+                    external_parent_span_id = get_span_id_from_otel_context()
+            else:
+                external_parent_span_id = get_span_id_from_otel_context()
+        else:
+            external_parent_span_id = get_span_id_from_otel_context()
+
         result = generator.generate(
             app_model=app,
             workflow=workflow,
             user=user,
             args={
-                "inputs": tool_parameters, 
-                "files": files, 
-                "external_trace_id": external_trace_id
+                "inputs": tool_parameters,
+                "files": files,
+                "external_trace_id": external_trace_id,
+                "external_parent_span_id": external_parent_span_id,
             },
             invoke_from=self.runtime.invoke_from,
             streaming=False,
