@@ -16,6 +16,7 @@ class TracingProviderEnum(StrEnum):
     MLFLOW = "mlflow"
     DATABRICKS = "databricks"
     TENCENT = "tencent"
+    ENTERPRISE = "enterprise"
 
 
 class BaseTracingConfig(BaseModel):
@@ -265,6 +266,28 @@ class DatabricksConfig(BaseTracingConfig):
     @classmethod
     def experiment_id_validator(cls, v, info: ValidationInfo):
         return validate_integer_id(v)
+
+
+class EnterpriseConfig(BaseTracingConfig):
+    """
+    Enterprise OTLP tracing config.
+    Pure OTLP-based tracing for enterprise deployments.
+    """
+
+    endpoint: str
+    service_name: str = "dify_app"
+    token: str | None = None
+
+    @field_validator("endpoint")
+    @classmethod
+    def endpoint_validator(cls, v, info: ValidationInfo):
+        # Default is set via environment variable ENTERPRISE_TRACE_ENDPOINT
+        return validate_url_with_path(v, "http://localhost:14318/v1/traces")
+
+    @field_validator("service_name")
+    @classmethod
+    def service_name_validator(cls, v, info: ValidationInfo):
+        return cls.validate_project_field(v, "dify_app")
 
 
 OPS_FILE_PATH = "ops_trace/"
