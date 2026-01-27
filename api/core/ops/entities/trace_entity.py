@@ -51,7 +51,7 @@ class WorkflowTraceInfo(BaseTraceInfo):
     file_list: list[str]
     query: str
     metadata: dict[str, Any]
-    parent_span_id: str | None = None  # For workflow-as-tool: parent tool node's span ID
+    tool_node_span_id: str | None = None  # For workflow-as-tool: tool node's span ID for OTEL linking
 
 
 class MessageTraceInfo(BaseTraceInfo):

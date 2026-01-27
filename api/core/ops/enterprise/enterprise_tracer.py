@@ -16,7 +16,6 @@ from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.enterprise.client import (
     EnterpriseTraceClient,
     convert_datetime_to_nanoseconds,
-    convert_hex_span_id_to_int,
     convert_hex_trace_id_to_int,
     convert_to_span_id,
     convert_to_trace_id,
@@ -50,6 +49,7 @@ from core.ops.enterprise.entities.semconv import (
 )
 from core.ops.enterprise.utils import (
     create_common_span_attributes,
+    create_link_to_span,
     create_links_from_trace_id,
     create_status_from_error,
     extract_retrieval_documents,
@@ -448,26 +448,13 @@ class EnterpriseTracer(BaseTraceInstance):
     def _add_workflow_span(self, trace_info: WorkflowTraceInfo, trace_metadata: TraceMetadata) -> None:
         """Add the main workflow span and optional message span.
 
-        For workflow-as-tool scenarios, when parent_span_id is provided, the workflow span
-        is created as a child of the invoking tool node's span, establishing proper
-        parent-child relationships in the trace hierarchy.
+        For workflow-as-tool scenarios, when tool_node_span_id is provided, the workflow span
+        is linked to the invoking tool node's span using OTEL Links, allowing correlation
+        without requiring a parent-child relationship.
         """
         message_span_id = None
         if trace_info.message_id:
             message_span_id = convert_to_span_id(trace_info.message_id, "message")
-
-        # Determine the parent span for the workflow:
-        # 1. If parent_span_id is provided (workflow-as-tool), use it as the parent
-        # 2. Otherwise, use message_span_id if available
-        # 3. Otherwise, the workflow span is a root span
-        external_parent_span_id: int | None = None
-        if trace_info.parent_span_id:
-            try:
-                external_parent_span_id = convert_hex_span_id_to_int(trace_info.parent_span_id)
-            except ValueError:
-                logger.warning(
-                    "Failed to convert parent_span_id '%s' to int, ignoring", trace_info.parent_span_id
-                )
 
         status = create_status_from_error(trace_info.error)
 
@@ -485,8 +472,21 @@ class EnterpriseTracer(BaseTraceInstance):
         if trace_info.conversation_id:
             dify_attrs[DIFY_CONVERSATION_ID] = trace_info.conversation_id
 
-        # If there's a message_id and no external parent (not workflow-as-tool), create a parent message span
-        if message_span_id and not external_parent_span_id:
+        # Build links list: start with existing links from trace_metadata
+        workflow_links = list(trace_metadata.links)
+
+        # For workflow-as-tool, add a link to the tool node span
+        if trace_info.tool_node_span_id and trace_info.trace_id:
+            tool_node_link = create_link_to_span(trace_info.trace_id, trace_info.tool_node_span_id)
+            if tool_node_link:
+                workflow_links.append(tool_node_link)
+                logger.debug(
+                    "[Enterprise OTLP] Added link to tool node span (span_id=%s) for workflow-as-tool",
+                    trace_info.tool_node_span_id,
+                )
+
+        # If there's a message_id, create a parent message span
+        if message_span_id:
             message_span = SpanData(
                 trace_id=trace_metadata.trace_id,
                 parent_span_id=None,
@@ -511,16 +511,11 @@ class EnterpriseTracer(BaseTraceInstance):
             )
             self.trace_client.add_span(message_span)
 
-        # Determine the workflow span's parent:
-        # - external_parent_span_id takes precedence (workflow-as-tool)
-        # - Otherwise use message_span_id (regular workflow with message)
-        # - Otherwise None (root span)
-        workflow_parent_span_id = external_parent_span_id or message_span_id
-
-        # Create the workflow span
+        # Create the workflow span with normal parent hierarchy (message or root)
+        # The link to the tool node span is added via the links list
         workflow_span = SpanData(
             trace_id=trace_metadata.trace_id,
-            parent_span_id=workflow_parent_span_id,
+            parent_span_id=message_span_id,
             span_id=trace_metadata.workflow_span_id,
             name="workflow",
             start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
@@ -537,8 +532,8 @@ class EnterpriseTracer(BaseTraceInstance):
                 **dify_attrs,
             },
             status=status,
-            links=trace_metadata.links,
-            span_kind=SpanKind.INTERNAL if workflow_parent_span_id else SpanKind.SERVER,
+            links=workflow_links,
+            span_kind=SpanKind.SERVER if message_span_id is None else SpanKind.INTERNAL,
         )
         self.trace_client.add_span(workflow_span)
 

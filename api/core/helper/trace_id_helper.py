@@ -61,18 +61,18 @@ def extract_external_trace_id_from_args(args: Mapping[str, Any]) -> dict[str, st
     return {}
 
 
-def extract_external_parent_span_id_from_args(args: Mapping[str, Any]) -> dict[str, str]:
+def extract_tool_node_span_id_from_args(args: Mapping[str, Any]) -> dict[str, str]:
     """
-    Extract 'external_parent_span_id' from args.
+    Extract 'tool_node_span_id' from args.
 
-    This is used for workflow-as-tool scenarios where the nested workflow's
-    root span should be a child of the invoking tool node's span.
+    This is used for workflow-as-tool scenarios where the nested workflow span
+    should be linked to the invoking tool node's span using OTEL Links.
 
     Returns a dict suitable for use in extras. Returns an empty dict if not found.
     """
-    span_id = args.get("external_parent_span_id")
+    span_id = args.get("tool_node_span_id")
     if span_id:
-        return {"external_parent_span_id": span_id}
+        return {"tool_node_span_id": span_id}
     return {}
 
 

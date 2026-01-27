@@ -7,7 +7,7 @@ from typing import Any
 from opentelemetry import trace as trace_api
 from opentelemetry.trace import Link, SpanContext, Status, StatusCode, TraceFlags
 
-from core.ops.enterprise.client import INVALID_SPAN_ID, convert_hex_trace_id_to_int
+from core.ops.enterprise.client import INVALID_SPAN_ID, convert_hex_span_id_to_int, convert_hex_trace_id_to_int
 from core.ops.enterprise.entities.semconv import (
     DIFY_TRACE_ID,
     GEN_AI_FRAMEWORK,
@@ -82,6 +82,38 @@ def create_links_from_trace_id(trace_id: str | None) -> list[trace_api.Link]:
     except (ValueError, TypeError) as e:
         logger.debug("Failed to create link from trace_id %s: %s", trace_id, e)
         return []
+
+
+def create_link_to_span(trace_id: str | None, span_id_hex: str | None) -> Link | None:
+    """
+    Create a Link to a specific span within the same trace.
+    
+    This is used for workflow-as-tool scenarios to link the nested workflow span
+    to the tool node span that invoked it, without requiring a parent-child relationship.
+    
+    Args:
+        trace_id: The trace ID as a hex string
+        span_id_hex: The span ID as a hex string (16 characters)
+        
+    Returns:
+        A Link object, or None if creation fails
+    """
+    if not trace_id or not span_id_hex:
+        return None
+    
+    try:
+        trace_id_int = convert_hex_trace_id_to_int(trace_id)
+        span_id_int = convert_hex_span_id_to_int(span_id_hex)
+        span_context = SpanContext(
+            trace_id=trace_id_int,
+            span_id=span_id_int,
+            is_remote=False,
+            trace_flags=TraceFlags(TraceFlags.SAMPLED),
+        )
+        return Link(span_context)
+    except (ValueError, TypeError) as e:
+        logger.debug("Failed to create link to span (trace_id=%s, span_id=%s): %s", trace_id, span_id_hex, e)
+        return None
 
 
 def get_workflow_node_status(node_execution: WorkflowNodeExecution) -> Status:

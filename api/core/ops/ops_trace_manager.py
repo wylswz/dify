@@ -575,14 +575,14 @@ class TraceTask:
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
         self.app_id = None
         self.trace_id = None
-        self.parent_span_id: str | None = None
+        self.tool_node_span_id: str | None = None
         self.kwargs = kwargs
         external_trace_id = kwargs.get("external_trace_id")
         if external_trace_id:
             self.trace_id = external_trace_id
-        external_parent_span_id = kwargs.get("external_parent_span_id")
-        if external_parent_span_id:
-            self.parent_span_id = external_parent_span_id
+        tool_node_span_id = kwargs.get("tool_node_span_id")
+        if tool_node_span_id:
+            self.tool_node_span_id = tool_node_span_id
 
     def execute(self):
         return self.preprocess()
@@ -700,7 +700,7 @@ class TraceTask:
             message_id=message_id,
             start_time=workflow_run.created_at,
             end_time=workflow_run.finished_at,
-            parent_span_id=self.parent_span_id,
+            tool_node_span_id=self.tool_node_span_id,
         )
         return workflow_trace_info
 
