@@ -683,6 +683,10 @@ x-shared-env: &shared-api-worker-env
   SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: ${SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE:-1000}
   SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: ${SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS:-30}
   SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: ${SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL:-90000}
+  ENTERPRISE_TRACE_ENABLED: ${ENTERPRISE_TRACE_ENABLED:-false}
+  ENTERPRISE_TRACE_ENDPOINT: ${ENTERPRISE_TRACE_ENDPOINT:-http://otel-collector:4318/v1/traces}
+  ENTERPRISE_TRACE_SERVICE_NAME: ${ENTERPRISE_TRACE_SERVICE_NAME:-dify_app}
+  ENTERPRISE_TRACE_TOKEN: ${ENTERPRISE_TRACE_TOKEN:-}
 
 services:
   # Init container to fix permissions
@@ -706,7 +710,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.11.4
+    image: yunluw/dify-api:latest
     restart: always
     environment:
       # Use the shared environment variables.
@@ -748,7 +752,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.11.4
+    image: yunluw/dify-api:latest
     restart: always
     environment:
       # Use the shared environment variables.
@@ -787,7 +791,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.11.4
+    image: yunluw/dify-api:latest
     restart: always
     environment:
       # Use the shared environment variables.

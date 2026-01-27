@@ -96,7 +96,12 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         query = query.replace("\x00", "")
         inputs = args["inputs"]
 
-        extras = {"auto_generate_conversation_name": args.get("auto_generate_name", True)}
+        from core.helper.trace_id_helper import extract_external_trace_id_from_args
+
+        extras = {
+            "auto_generate_conversation_name": args.get("auto_generate_name", True),
+            **extract_external_trace_id_from_args(args),
+        }
 
         # get conversation
         conversation = None

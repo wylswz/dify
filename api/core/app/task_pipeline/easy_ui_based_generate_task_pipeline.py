@@ -403,9 +403,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.message_metadata = self._task_state.metadata.model_dump_json()
 
         if trace_manager:
+            external_trace_id = self._application_generate_entity.extras.get("external_trace_id")
             trace_manager.add_trace_task(
                 TraceTask(
-                    TraceTaskName.MESSAGE_TRACE, conversation_id=self._conversation_id, message_id=self._message_id
+                    TraceTaskName.MESSAGE_TRACE,
+                    conversation_id=self._conversation_id,
+                    message_id=self._message_id,
+                    external_trace_id=external_trace_id,
                 )
             )
 

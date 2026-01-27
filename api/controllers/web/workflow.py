@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 
+from flask import request
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
@@ -22,6 +23,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.graph_engine.manager import GraphEngineManager
 from libs import helper
@@ -65,6 +67,10 @@ class WorkflowRunApi(WebApiResource):
 
         payload = WorkflowRunPayload.model_validate(web_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
+
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
 
         try:
             response = AppGenerateService.generate(

@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Literal
 
+from flask import request
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -25,6 +26,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
@@ -93,6 +95,10 @@ class CompletionApi(WebApiResource):
 
         streaming = payload.response_mode == "streaming"
         args["auto_generate_name"] = False
+
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
 
         try:
             response = AppGenerateService.generate(

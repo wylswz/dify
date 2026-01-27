@@ -14,6 +14,7 @@ from flask import current_app
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
@@ -301,15 +302,25 @@ class OpsTraceManager:
 
         return decrypt_tracing_config
 
+    # Cache key for enterprise tracer instance
+    _enterprise_tracer_cache_key = "__enterprise_tracer__"
+
     @classmethod
     def get_ops_trace_instance(
         cls,
         app_id: Union[UUID, str] | None = None,
     ):
         """
-        Get ops trace through model config
+        Get ops trace through model config.
+
+        When ENTERPRISE_TRACE_ENABLED=true, returns a CompositeTracer that wraps both:
+        - Enterprise tracer (always runs, config from environment variables)
+        - User-configured tracer (if configured in the app, runs in finally block)
+
+        This ensures enterprise observability while still supporting user-configured tracers.
+
         :param app_id: app_id
-        :return:
+        :return: trace instance (CompositeTracer when enterprise enabled, or user tracer)
         """
         if isinstance(app_id, UUID):
             app_id = str(app_id)
@@ -317,42 +328,108 @@ class OpsTraceManager:
         if app_id is None:
             return None
 
-        app: App | None = db.session.query(App).where(App.id == app_id).first()
+        # Get user-configured tracer (if any)
+        user_tracer = cls._get_user_configured_tracer(app_id)
 
-        if app is None:
+        # When ENTERPRISE_TRACE_ENABLED=true, wrap with enterprise tracer
+        if dify_config.ENTERPRISE_TRACE_ENABLED:
+            enterprise_tracer = cls._get_enterprise_trace_instance()
+
+            # If we have either tracer, return a composite
+            if enterprise_tracer or user_tracer:
+                from core.ops.enterprise.composite_tracer import CompositeTracer
+
+                logger.info(
+                    "Enterprise tracing enabled: enterprise_tracer=%s, user_tracer=%s",
+                    enterprise_tracer is not None,
+                    user_tracer is not None,
+                )
+                return CompositeTracer(
+                    enterprise_tracer=enterprise_tracer,
+                    user_tracer=user_tracer,
+                )
             return None
 
-        app_ops_trace_config = json.loads(app.tracing) if app.tracing else None
-        if app_ops_trace_config is None:
-            return None
-        if not app_ops_trace_config.get("enabled"):
-            return None
+        # Enterprise tracing disabled - just return user tracer (or None)
+        return user_tracer
 
-        tracing_provider = app_ops_trace_config.get("tracing_provider")
-        if tracing_provider is None:
-            return None
+    @classmethod
+    def _get_user_configured_tracer(cls, app_id: str):
+        """
+        Get the user-configured tracer for an app (if any).
+        This is the tracer configured through the UI.
+        """
         try:
-            provider_config_map[tracing_provider]
-        except KeyError:
+            app: App | None = db.session.query(App).where(App.id == app_id).first()
+
+            if app is None:
+                return None
+
+            app_ops_trace_config = json.loads(app.tracing) if app.tracing else None
+            if app_ops_trace_config is None:
+                return None
+            if not app_ops_trace_config.get("enabled"):
+                return None
+
+            tracing_provider = app_ops_trace_config.get("tracing_provider")
+            if tracing_provider is None:
+                return None
+
+            try:
+                provider_config_map[tracing_provider]
+            except KeyError:
+                return None
+
+            # decrypt_token
+            decrypt_trace_config = cls.get_decrypted_tracing_config(app_id, tracing_provider)
+            if not decrypt_trace_config:
+                return None
+
+            trace_instance, config_class = (
+                provider_config_map[tracing_provider]["trace_instance"],
+                provider_config_map[tracing_provider]["config_class"],
+            )
+            decrypt_trace_config_key = json.dumps(decrypt_trace_config, sort_keys=True)
+            tracing_instance = cls.ops_trace_instances_cache.get(decrypt_trace_config_key)
+            if tracing_instance is None:
+                # create new tracing_instance and update the cache if it absent
+                tracing_instance = trace_instance(config_class(**decrypt_trace_config))
+                cls.ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
+                logger.info("new user tracing_instance for app_id: %s, provider: %s", app_id, tracing_provider)
+            return tracing_instance
+        except Exception:
+            logger.exception("Failed to get user-configured tracer for app_id: %s", app_id)
             return None
 
-        # decrypt_token
-        decrypt_trace_config = cls.get_decrypted_tracing_config(app_id, tracing_provider)
-        if not decrypt_trace_config:
-            return None
+    @classmethod
+    def _get_enterprise_trace_instance(cls):
+        """
+        Get or create the enterprise tracer instance using environment variables.
+        This is used when ENTERPRISE_TRACE_ENABLED=true for implicit tracing.
+        """
+        # Check cache first
+        cached_instance = cls.ops_trace_instances_cache.get(cls._enterprise_tracer_cache_key)
+        if cached_instance is not None:
+            return cached_instance
 
-        trace_instance, config_class = (
-            provider_config_map[tracing_provider]["trace_instance"],
-            provider_config_map[tracing_provider]["config_class"],
-        )
-        decrypt_trace_config_key = json.dumps(decrypt_trace_config, sort_keys=True)
-        tracing_instance = cls.ops_trace_instances_cache.get(decrypt_trace_config_key)
-        if tracing_instance is None:
-            # create new tracing_instance and update the cache if it absent
-            tracing_instance = trace_instance(config_class(**decrypt_trace_config))
-            cls.ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
-            logger.info("new tracing_instance for app_id: %s", app_id)
-        return tracing_instance
+        try:
+            # Create enterprise tracer from environment config
+            from core.ops.enterprise.enterprise_tracer import EnterpriseTracer
+
+            logger.info(
+                "Creating enterprise tracer with endpoint=%s, service_name=%s",
+                dify_config.ENTERPRISE_TRACE_ENDPOINT,
+                dify_config.ENTERPRISE_TRACE_SERVICE_NAME,
+            )
+
+            enterprise_tracer = EnterpriseTracer()
+            cls.ops_trace_instances_cache[cls._enterprise_tracer_cache_key] = enterprise_tracer
+            logger.info("Created enterprise tracer instance (implicit tracing enabled)")
+
+            return enterprise_tracer
+        except Exception:
+            logger.exception("Failed to create enterprise tracer instance")
+            return None
 
     @classmethod
     def get_app_config_through_message_id(cls, message_id: str):

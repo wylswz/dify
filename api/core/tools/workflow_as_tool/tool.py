@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from core.helper.trace_id_helper import get_trace_id_from_otel_context
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -90,11 +91,16 @@ class WorkflowTool(Tool):
 
         self._latest_usage = LLMUsage.empty_usage()
 
+        external_trace_id = get_trace_id_from_otel_context()
         result = generator.generate(
             app_model=app,
             workflow=workflow,
             user=user,
-            args={"inputs": tool_parameters, "files": files},
+            args={
+                "inputs": tool_parameters, 
+                "files": files, 
+                "external_trace_id": external_trace_id
+            },
             invoke_from=self.runtime.invoke_from,
             streaming=False,
             call_depth=self.workflow_call_depth + 1,
