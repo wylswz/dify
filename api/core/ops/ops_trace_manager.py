@@ -47,15 +47,6 @@ logger = logging.getLogger(__name__)
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
     def __getitem__(self, provider: str) -> dict[str, Any]:
-        if dify_config.ENTERPRISE_TRACE_ENABLED:
-            from core.ops.enterprise.enterprise_tracer import EnterpriseTracer
-            from core.ops.entities.config_entity import EnterpriseConfig
-            return {
-                "config_class": EnterpriseConfig,
-                "secret_keys": ["token"],
-                "other_keys": ["endpoint", "service_name"],
-                "trace_instance": EnterpriseTracer,
-            }
         match provider:
             case TracingProviderEnum.LANGFUSE:
                 from core.ops.entities.config_entity import LangfuseConfig
@@ -425,7 +416,6 @@ class OpsTraceManager:
         try:
             # Create enterprise tracer from environment config
             from core.ops.enterprise.enterprise_tracer import EnterpriseTracer
-            from core.ops.entities.config_entity import EnterpriseConfig
 
             logger.info(
                 "Creating enterprise tracer with endpoint=%s, service_name=%s",
@@ -433,13 +423,7 @@ class OpsTraceManager:
                 dify_config.ENTERPRISE_TRACE_SERVICE_NAME,
             )
 
-            enterprise_config = EnterpriseConfig(
-                endpoint=dify_config.ENTERPRISE_TRACE_ENDPOINT,
-                service_name=dify_config.ENTERPRISE_TRACE_SERVICE_NAME,
-                token=dify_config.ENTERPRISE_TRACE_TOKEN,
-            )
-
-            enterprise_tracer = EnterpriseTracer(enterprise_config)
+            enterprise_tracer = EnterpriseTracer()
             cls.ops_trace_instances_cache[cls._enterprise_tracer_cache_key] = enterprise_tracer
             logger.info("Created enterprise tracer instance (implicit tracing enabled)")
 

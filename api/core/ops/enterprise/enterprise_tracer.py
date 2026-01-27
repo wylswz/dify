@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from opentelemetry.trace import SpanKind
 from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.enterprise.client import (
     EnterpriseTraceClient,
@@ -58,7 +59,6 @@ from core.ops.enterprise.utils import (
     get_workflow_node_status,
     serialize_json_data,
 )
-from core.ops.entities.config_entity import EnterpriseConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -88,12 +88,11 @@ class EnterpriseTracer(BaseTraceInstance):
     workflow_run_id or message_id.
     """
 
-    def __init__(self, enterprise_config: EnterpriseConfig):
-        super().__init__(enterprise_config)
+    def __init__(self):
         self.trace_client = EnterpriseTraceClient(
-            service_name=enterprise_config.service_name,
-            endpoint=enterprise_config.endpoint,
-            token=enterprise_config.token,
+            service_name=dify_config.ENTERPRISE_TRACE_SERVICE_NAME,
+            endpoint=dify_config.ENTERPRISE_TRACE_ENDPOINT,
+            token=dify_config.ENTERPRISE_TRACE_TOKEN,
         )
 
     def trace(self, trace_info: BaseTraceInfo) -> None:
@@ -176,6 +175,13 @@ class EnterpriseTracer(BaseTraceInstance):
                 node_span = self._build_workflow_node_span(node_execution, trace_info, trace_metadata)
                 if node_span:
                     self.trace_client.add_span(node_span)
+
+                # Record LLM metrics for LLM nodes
+                if node_execution.node_type == NodeType.LLM:
+                    self._record_llm_metrics(node_execution)
+
+            # Record workflow trace duration
+            self._record_workflow_trace_duration(trace_info)
 
         except Exception:
             logger.exception("[Enterprise OTLP] Failed to process workflow trace")
@@ -269,6 +275,12 @@ class EnterpriseTracer(BaseTraceInstance):
                 links=trace_metadata.links,
             )
             self.trace_client.add_span(llm_span)
+
+            # Record LLM metrics for message traces
+            self._record_message_llm_metrics(trace_info)
+
+            # Record message trace duration
+            self._record_message_trace_duration(trace_info)
 
         except Exception:
             logger.exception("[Enterprise OTLP] Failed to process message trace")
@@ -678,6 +690,186 @@ class EnterpriseTracer(BaseTraceInstance):
             status=get_workflow_node_status(node_execution),
             links=trace_metadata.links,
         )
+
+    # Metrics recording methods
+    def _record_llm_metrics(self, node_execution: WorkflowNodeExecution) -> None:
+        """Record LLM performance metrics for workflow nodes."""
+        try:
+            process_data = node_execution.process_data or {}
+            outputs = node_execution.outputs or {}
+            usage = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+
+            model_provider = process_data.get("model_provider", "unknown")
+            model_name = process_data.get("model_name", "unknown")
+            model_mode = process_data.get("model_mode", "chat")
+
+            # Record LLM duration
+            latency_s = float(usage.get("latency", 0.0))
+            if latency_s > 0:
+                is_streaming = usage.get("time_to_first_token") is not None
+                attributes = {
+                    "gen_ai.system": model_provider,
+                    "gen_ai.response.model": model_name,
+                    "gen_ai.operation.name": model_mode,
+                    "stream": "true" if is_streaming else "false",
+                }
+                self.trace_client.record_llm_duration(latency_s, attributes)
+
+            # Record streaming metrics
+            time_to_first_token = usage.get("time_to_first_token")
+            if time_to_first_token is not None:
+                ttft_seconds = float(time_to_first_token)
+                if ttft_seconds > 0:
+                    self.trace_client.record_time_to_first_token(
+                        ttft_seconds=ttft_seconds, provider=model_provider, model=model_name, operation_name=model_mode
+                    )
+
+            time_to_generate = usage.get("time_to_generate")
+            if time_to_generate is not None:
+                ttg_seconds = float(time_to_generate)
+                if ttg_seconds > 0:
+                    self.trace_client.record_time_to_generate(
+                        ttg_seconds=ttg_seconds, provider=model_provider, model=model_name, operation_name=model_mode
+                    )
+
+            # Record token usage
+            input_tokens = int(usage.get("prompt_tokens", 0))
+            output_tokens = int(usage.get("completion_tokens", 0))
+
+            if input_tokens > 0:
+                self.trace_client.record_token_usage(
+                    token_count=input_tokens,
+                    token_type="input",
+                    operation_name=model_mode,
+                    request_model=model_name,
+                    response_model=model_name,
+                    server_address=model_provider,
+                    provider=model_provider,
+                )
+
+            if output_tokens > 0:
+                self.trace_client.record_token_usage(
+                    token_count=output_tokens,
+                    token_type="output",
+                    operation_name=model_mode,
+                    request_model=model_name,
+                    response_model=model_name,
+                    server_address=model_provider,
+                    provider=model_provider,
+                )
+
+        except Exception:
+            logger.debug("[Enterprise OTLP] Failed to record LLM metrics")
+
+    def _record_message_llm_metrics(self, trace_info: MessageTraceInfo) -> None:
+        """Record LLM metrics for message traces."""
+        try:
+            trace_metadata = trace_info.metadata or {}
+            message_data = trace_info.message_data or {}
+            provider_latency = 0.0
+            if isinstance(message_data, dict):
+                provider_latency = float(message_data.get("provider_response_latency", 0.0) or 0.0)
+            else:
+                provider_latency = float(getattr(message_data, "provider_response_latency", 0.0) or 0.0)
+
+            model_provider = trace_metadata.get("ls_provider") or (
+                message_data.get("model_provider", "") if isinstance(message_data, dict) else ""
+            )
+            model_name = trace_metadata.get("ls_model_name") or (
+                message_data.get("model_id", "") if isinstance(message_data, dict) else ""
+            )
+
+            # Record LLM duration
+            if provider_latency > 0:
+                is_streaming = trace_info.is_streaming_request
+                duration_attributes = {
+                    "gen_ai.system": model_provider,
+                    "gen_ai.response.model": model_name,
+                    "gen_ai.operation.name": "chat",
+                    "stream": "true" if is_streaming else "false",
+                }
+                self.trace_client.record_llm_duration(provider_latency, duration_attributes)
+
+            # Record streaming metrics
+            if trace_info.is_streaming_request:
+                if trace_info.gen_ai_server_time_to_first_token is not None:
+                    ttft_seconds = float(trace_info.gen_ai_server_time_to_first_token)
+                    if ttft_seconds > 0:
+                        self.trace_client.record_time_to_first_token(
+                            ttft_seconds=ttft_seconds, provider=str(model_provider or ""), model=str(model_name or "")
+                        )
+
+                if trace_info.llm_streaming_time_to_generate is not None:
+                    ttg_seconds = float(trace_info.llm_streaming_time_to_generate)
+                    if ttg_seconds > 0:
+                        self.trace_client.record_time_to_generate(
+                            ttg_seconds=ttg_seconds, provider=str(model_provider or ""), model=str(model_name or "")
+                        )
+
+            # Record token usage
+            input_tokens = int(trace_info.message_tokens or 0)
+            output_tokens = int(trace_info.answer_tokens or 0)
+
+            if input_tokens > 0:
+                self.trace_client.record_token_usage(
+                    token_count=input_tokens,
+                    token_type="input",
+                    operation_name="chat",
+                    request_model=str(model_name or ""),
+                    response_model=str(model_name or ""),
+                    server_address=str(model_provider or ""),
+                    provider=str(model_provider or ""),
+                )
+
+            if output_tokens > 0:
+                self.trace_client.record_token_usage(
+                    token_count=output_tokens,
+                    token_type="output",
+                    operation_name="chat",
+                    request_model=str(model_name or ""),
+                    response_model=str(model_name or ""),
+                    server_address=str(model_provider or ""),
+                    provider=str(model_provider or ""),
+                )
+
+        except Exception:
+            logger.debug("[Enterprise OTLP] Failed to record message LLM metrics")
+
+    def _record_workflow_trace_duration(self, trace_info: WorkflowTraceInfo) -> None:
+        """Record end-to-end workflow trace duration."""
+        try:
+            # Calculate duration from start_time and end_time
+            if trace_info.start_time and trace_info.end_time:
+                duration_s = (trace_info.end_time - trace_info.start_time).total_seconds()
+            else:
+                duration_s = float(trace_info.workflow_run_elapsed_time)
+
+            if duration_s > 0:
+                attributes = {
+                    "conversation_mode": "workflow",
+                    "workflow_status": trace_info.workflow_run_status,
+                    "has_conversation": "true" if trace_info.conversation_id else "false",
+                }
+                self.trace_client.record_trace_duration(duration_s, attributes)
+
+        except Exception:
+            logger.debug("[Enterprise OTLP] Failed to record workflow trace duration")
+
+    def _record_message_trace_duration(self, trace_info: MessageTraceInfo) -> None:
+        """Record end-to-end message trace duration."""
+        try:
+            if trace_info.start_time and trace_info.end_time:
+                duration = (trace_info.end_time - trace_info.start_time).total_seconds()
+
+                if duration > 0:
+                    attributes = {
+                        "conversation_mode": trace_info.conversation_mode,
+                        "stream": "true" if trace_info.is_streaming_request else "false",
+                    }
+                    self.trace_client.record_trace_duration(duration, attributes)
+
+        except Exception:
+            logger.debug("[Enterprise OTLP] Failed to record message trace duration")
 
     def __del__(self) -> None:
         """Ensure proper cleanup on garbage collection."""
