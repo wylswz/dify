@@ -49,7 +49,7 @@ dependencies = [
     # Emerging: newer and fast-moving, use compatible pins
     "arize-phoenix-otel~=0.15.0",
     "fastopenapi[flask]~=0.7.0",
-    "graphon~=0.1.2",
+    "graphon",
     "httpx-sse~=0.4.0",
     "json-repair~=0.59.2",
     "opik~=1.11.2",
@@ -95,6 +95,7 @@ dify-vdb-upstash = { workspace = true }
 dify-vdb-vastbase = { workspace = true }
 dify-vdb-vikingdb = { workspace = true }
 dify-vdb-weaviate = { workspace = true }
+graphon = { path = "../../graphon", editable = true }
 
 [tool.uv]
 default-groups = ["storage", "tools", "vdb-all"]
