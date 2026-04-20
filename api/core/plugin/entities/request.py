@@ -240,10 +240,9 @@ class RequestFetchAppInfo(BaseModel):
 
 
 class RequestSubmitToolInterruptResult(BaseModel):
-    """Plugin callback after async tool work: same keys as ToolNode interrupt payload (`text`, `json`, extra outputs)."""
+    """Plugin callback after async tool work. Dify maps ``token`` to the paused workflow run."""
 
     token: str
-    workflow_run_id: str
     result: dict[str, Any] = Field(default_factory=dict)
 
 

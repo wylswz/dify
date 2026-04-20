@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from core.workflow.tool_interrupt_result_store import store_tool_interrupt_run_binding
+from graphon.entities.pause_reason import Interrupted
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
 from models.model import AppMode
@@ -131,6 +133,9 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             state=state.dumps(),
             pause_reasons=event.reasons,
         )
+        for reason in event.reasons:
+            if isinstance(reason, Interrupted):
+                store_tool_interrupt_run_binding(token=reason.token, workflow_run_id=workflow_run_id)
 
     def on_graph_end(self, error: Exception | None) -> None:
         """

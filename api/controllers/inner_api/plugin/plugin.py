@@ -28,6 +28,10 @@ from core.plugin.entities.request import (
     RequestRequestUploadFile,
     RequestSubmitToolInterruptResult,
 )
+from core.workflow.tool_interrupt_result_store import (
+    delete_tool_interrupt_run_binding,
+    get_tool_interrupt_run_binding,
+)
 from core.workflow.tool_interrupt_submit import submit_tool_interrupt_result_and_resume
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import get_signed_file_url_for_plugin
@@ -466,7 +470,12 @@ class PluginSubmitToolInterruptResultApi(Resource):
         description="Store async tool result by interrupt token and enqueue workflow resume (tool is not invoked again)."
     )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestSubmitToolInterruptResult):
-        workflow_run = db.session.get(WorkflowRun, payload.workflow_run_id)
+        workflow_run_id = get_tool_interrupt_run_binding(payload.token)
+        if workflow_run_id is None:
+            return BaseBackwardsInvocationResponse(
+                error="Interrupt token unknown or expired",
+            ).model_dump()
+        workflow_run = db.session.get(WorkflowRun, workflow_run_id)
         if workflow_run is None or workflow_run.tenant_id != tenant_model.id:
             return BaseBackwardsInvocationResponse(error="Workflow run not found").model_dump()
         if workflow_run.status != WorkflowExecutionStatus.PAUSED:
@@ -475,7 +484,8 @@ class PluginSubmitToolInterruptResultApi(Resource):
             ).model_dump()
         submit_tool_interrupt_result_and_resume(
             token=payload.token,
-            workflow_run_id=payload.workflow_run_id,
+            workflow_run_id=workflow_run_id,
             result=payload.result,
         )
+        delete_tool_interrupt_run_binding(payload.token)
         return BaseBackwardsInvocationResponse(data={"accepted": True}).model_dump()
