@@ -44,7 +44,7 @@ dependencies = [
 
     # Emerging: newer and fast-moving, use compatible pins
     "fastopenapi[flask]~=0.7.0",
-    "graphon~=0.2.2",
+    "graphon",
     "httpx-sse~=0.4.0",
     "json-repair~=0.59.4",
 ]
@@ -59,6 +59,7 @@ members = ["providers/vdb/*", "providers/trace/*"]
 exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 
 [tool.uv.sources]
+graphon = { path = "../../graphon", editable = true }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }

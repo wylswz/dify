@@ -265,6 +265,8 @@ class ToolEngine:
                 )
             elif response.type == ToolInvokeMessage.MessageType.VARIABLE:
                 continue
+            elif response.type == ToolInvokeMessage.MessageType.INTERRUPT:
+                continue
             else:
                 parts.append(str(response.message))
 

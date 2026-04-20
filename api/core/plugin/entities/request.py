@@ -239,6 +239,14 @@ class RequestFetchAppInfo(BaseModel):
     app_id: str
 
 
+class RequestSubmitToolInterruptResult(BaseModel):
+    """Plugin callback after async tool work: same keys as ToolNode interrupt payload (`text`, `json`, extra outputs)."""
+
+    token: str
+    workflow_run_id: str
+    result: dict[str, Any] = Field(default_factory=dict)
+
+
 class TriggerInvokeEventResponse(BaseModel):
     variables: Mapping[str, Any] = Field(default_factory=dict)
     cancelled: bool = Field(default=False)

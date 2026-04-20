@@ -227,6 +227,9 @@ class ToolInvokeMessage(BaseModel):
         retriever_resources: list[RetrievalSourceMetadata] = Field(..., description="retriever resources")
         context: str = Field(..., description="context")
 
+    class InterruptMessage(BaseModel):
+        token: str = Field(..., description="Opaque handle for resume / correlation")
+
     class MessageType(StrEnum):
         TEXT = auto()
         IMAGE = auto()
@@ -240,6 +243,7 @@ class ToolInvokeMessage(BaseModel):
         LOG = auto()
         BLOB_CHUNK = auto()
         RETRIEVER_RESOURCES = auto()
+        INTERRUPT = auto()
 
     type: MessageType = MessageType.TEXT
     """
@@ -255,6 +259,7 @@ class ToolInvokeMessage(BaseModel):
         | None
         | VariableMessage
         | RetrieverResourceMessage
+        | InterruptMessage
     )
     meta: dict[str, Any] | None = None
 
@@ -275,6 +280,9 @@ class ToolInvokeMessage(BaseModel):
                     v = {"json_object": v}
             elif msg_type == cls.MessageType.FILE:
                 v = {"file_marker": "file_marker"}
+            elif msg_type == cls.MessageType.INTERRUPT:
+                if "token" not in v:
+                    raise ValueError("Interrupt message requires 'token'")
 
         return v
 

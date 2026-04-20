@@ -537,6 +537,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         | CoreToolInvokeMessage.FileMessage
         | CoreToolInvokeMessage.VariableMessage
         | CoreToolInvokeMessage.RetrieverResourceMessage
+        | CoreToolInvokeMessage.InterruptMessage
         | None,
     ) -> (
         ToolRuntimeMessage.TextMessage
@@ -547,6 +548,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         | ToolRuntimeMessage.FileMessage
         | ToolRuntimeMessage.VariableMessage
         | ToolRuntimeMessage.RetrieverResourceMessage
+        | ToolRuntimeMessage.InterruptMessage
         | None
     ):
         if message is None:
@@ -598,6 +600,8 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 retriever_resources=retriever_resources,
                 context=message.context,
             )
+        if isinstance(message, CoreToolInvokeMessage.InterruptMessage):
+            return ToolRuntimeMessage.InterruptMessage(token=message.token)
 
         raise TypeError(f"unsupported tool message payload: {type(message).__name__}")
 

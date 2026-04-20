@@ -1592,7 +1592,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0" },
     { name = "google-api-python-client", specifier = ">=2.194.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.147.0,<2.0.0" },
-    { name = "graphon", specifier = "~=0.2.2" },
+    { name = "graphon", editable = "../../graphon" },
     { name = "gunicorn", specifier = ">=25.3.0" },
     { name = "httpx", extras = ["socks"], specifier = ">=0.28.1,<1.0.0" },
     { name = "httpx-sse", specifier = "~=0.4.0" },
@@ -2935,8 +2935,8 @@ httpx = [
 
 [[package]]
 name = "graphon"
-version = "0.2.2"
-source = { registry = "https://pypi.org/simple" }
+version = "0.2.1"
+source = { editable = "../../graphon" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "httpx" },
@@ -2956,9 +2956,37 @@ dependencies = [
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/08/50/e745a79c5f742f88f6011a1f7c9ba2c2f9cc1beedd982f0b192f1ab8c748/graphon-0.2.2.tar.gz", hash = "sha256:141f0de536171850f1af6f738dc66f0285aadd3c097f1dad2a038636789e0aa5", size = 236360, upload-time = "2026-04-17T08:52:28.047Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/89/a6340afdaf5169d17a318e00fc685fb67ed99baa602c2cbbbf6af6a76096/graphon-0.2.2-py3-none-any.whl", hash = "sha256:754e544d08779138f99eac6547ab08559463680e2c76488b05e1c978210392b4", size = 340808, upload-time = "2026-04-17T08:52:26.5Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "charset-normalizer", specifier = ">=2.1" },
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "json-repair", specifier = ">=0.55" },
+    { name = "jsonschema", specifier = ">=4" },
+    { name = "orjson", specifier = ">=3" },
+    { name = "pandas", extras = ["excel"], specifier = ">=2.1" },
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "pydantic-extra-types", specifier = ">=2" },
+    { name = "pypandoc", specifier = ">=1.13" },
+    { name = "pypdfium2", specifier = ">=5" },
+    { name = "python-docx", specifier = ">=1.2" },
+    { name = "pyyaml", specifier = ">=6" },
+    { name = "tiktoken", specifier = ">=0.12" },
+    { name = "transformers", specifier = ">=4" },
+    { name = "typing-extensions", specifier = ">=4.10.0" },
+    { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = ">=0.21" },
+    { name = "webvtt-py", specifier = ">=0.5" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "prek" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "pytest-xdist" },
+    { name = "ruff" },
+    { name = "ty" },
 ]
 
 [[package]]

@@ -26,13 +26,18 @@ from core.plugin.entities.request import (
     RequestInvokeTool,
     RequestInvokeTTS,
     RequestRequestUploadFile,
+    RequestSubmitToolInterruptResult,
 )
+from core.workflow.tool_interrupt_submit import submit_tool_interrupt_result_and_resume
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import get_signed_file_url_for_plugin
+from extensions.ext_database import db
+from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
+from models.workflow import WorkflowRun
 
 
 @inner_api_ns.route("/invoke/llm")
@@ -448,3 +453,29 @@ class PluginFetchAppInfoApi(Resource):
         return BaseBackwardsInvocationResponse(
             data=PluginAppBackwardsInvocation.fetch_app_info(payload.app_id, tenant_model.id)
         ).model_dump()
+
+
+@inner_api_ns.route("/tool/interrupt/result")
+class PluginSubmitToolInterruptResultApi(Resource):
+    @get_user_tenant
+    @setup_required
+    @plugin_inner_api_only
+    @plugin_data(payload_type=RequestSubmitToolInterruptResult)
+    @inner_api_ns.doc("plugin_submit_tool_interrupt_result")
+    @inner_api_ns.doc(
+        description="Store async tool result by interrupt token and enqueue workflow resume (tool is not invoked again)."
+    )
+    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestSubmitToolInterruptResult):
+        workflow_run = db.session.get(WorkflowRun, payload.workflow_run_id)
+        if workflow_run is None or workflow_run.tenant_id != tenant_model.id:
+            return BaseBackwardsInvocationResponse(error="Workflow run not found").model_dump()
+        if workflow_run.status != WorkflowExecutionStatus.PAUSED:
+            return BaseBackwardsInvocationResponse(
+                error=f"Workflow run is not paused (status={workflow_run.status})"
+            ).model_dump()
+        submit_tool_interrupt_result_and_resume(
+            token=payload.token,
+            workflow_run_id=payload.workflow_run_id,
+            result=payload.result,
+        )
+        return BaseBackwardsInvocationResponse(data={"accepted": True}).model_dump()

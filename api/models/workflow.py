@@ -32,7 +32,13 @@ from core.workflow.variable_prefixes import (
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import (
+    HumanInputRequired,
+    Interrupted,
+    PauseReason,
+    PauseReasonType,
+    SchedulingPause,
+)
 from graphon.enums import (
     BuiltinNodeTypes,
     NodeType,
@@ -2104,6 +2110,13 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
             )
         elif isinstance(pause_reason, SchedulingPause):
             return cls(pause_id=pause_id, type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message)
+        elif isinstance(pause_reason, Interrupted):
+            return cls(
+                pause_id=pause_id,
+                type_=PauseReasonType.INTERRUPTED,
+                message=pause_reason.token[:255],
+                node_id=pause_reason.node_id,
+            )
         else:
             raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
@@ -2117,5 +2130,7 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
             )
         elif self.type_ == PauseReasonType.SCHEDULED_PAUSE:
             return SchedulingPause(message=self.message)
+        elif self.type_ == PauseReasonType.INTERRUPTED:
+            return Interrupted(token=self.message, node_id=self.node_id)
         else:
             raise AssertionError(f"Unknown pause reason type: {self.type_}")

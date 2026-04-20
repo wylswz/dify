@@ -34,7 +34,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from extensions.ext_storage import storage
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import HumanInputRequired, Interrupted, PauseReason, PauseReasonType, SchedulingPause
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.nodes.human_input.entities import FormDefinition
 from libs.datetime_utils import naive_utc_now
@@ -762,6 +762,13 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                         pause_id=pause_model.id,
                         type_=reason.TYPE,
                         message=reason.message,
+                    )
+                elif isinstance(reason, Interrupted):
+                    pause_reason_model = WorkflowPauseReason(
+                        pause_id=pause_model.id,
+                        type_=reason.TYPE,
+                        message=reason.token[:255],
+                        node_id=reason.node_id,
                     )
                 else:
                     raise AssertionError(f"unkown reason type: {type(reason)}")

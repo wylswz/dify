@@ -20,6 +20,7 @@ from core.app.entities.app_invoke_entities import (
     WorkflowAppGenerateEntity,
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
+from core.workflow.tool_interrupt_resume import apply_pending_tool_interrupt_results
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.runtime import GraphRuntimeState
@@ -289,6 +290,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
     generate_entity = resumption_context.get_generate_entity()
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    apply_pending_tool_interrupt_results(graph_runtime_state)
 
     conversation = None
     message = None
