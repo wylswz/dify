@@ -1,3 +1,4 @@
+import logging
 from flask_restx import Resource
 
 from controllers.console.wraps import setup_required
@@ -43,6 +44,7 @@ from models import Account, Tenant
 from models.model import EndUser
 from models.workflow import WorkflowRun
 
+logger = logging.getLogger(__name__)
 
 @inner_api_ns.route("/invoke/llm")
 class PluginInvokeLLMApi(Resource):
@@ -461,7 +463,6 @@ class PluginFetchAppInfoApi(Resource):
 
 @inner_api_ns.route("/tool/interrupt/result")
 class PluginSubmitToolInterruptResultApi(Resource):
-    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
     @plugin_data(payload_type=RequestSubmitToolInterruptResult)
@@ -469,15 +470,19 @@ class PluginSubmitToolInterruptResultApi(Resource):
     @inner_api_ns.doc(
         description="Store async tool result by interrupt token and enqueue workflow resume (tool is not invoked again)."
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestSubmitToolInterruptResult):
+    def post(self, payload: RequestSubmitToolInterruptResult):
+        # Tenant is derived from the paused workflow run; body only needs token + result (X-Inner-Api-Key auth).
         workflow_run_id = get_tool_interrupt_run_binding(payload.token)
+        logger.info("recover workflow run %s", workflow_run_id)
         if workflow_run_id is None:
             return BaseBackwardsInvocationResponse(
                 error="Interrupt token unknown or expired",
             ).model_dump()
         workflow_run = db.session.get(WorkflowRun, workflow_run_id)
-        if workflow_run is None or workflow_run.tenant_id != tenant_model.id:
+        if workflow_run is None:
             return BaseBackwardsInvocationResponse(error="Workflow run not found").model_dump()
+        if db.session.get(Tenant, workflow_run.tenant_id) is None:
+            return BaseBackwardsInvocationResponse(error="Tenant not found").model_dump()
         if workflow_run.status != WorkflowExecutionStatus.PAUSED:
             return BaseBackwardsInvocationResponse(
                 error=f"Workflow run is not paused (status={workflow_run.status})"
