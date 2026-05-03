@@ -626,6 +626,7 @@ x-shared-env: &shared-api-worker-env
   EXPOSE_PLUGIN_DEBUGGING_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
   PLUGIN_DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
   PLUGIN_DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
+  ADMIN_API_KEY: ${ADMIN_API_KEY:-}
   ENDPOINT_URL_TEMPLATE: ${ENDPOINT_URL_TEMPLATE:-http://localhost/e/{hook_id}}
   MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-true}
   MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
@@ -745,7 +746,8 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.14.0
+    build:
+      context: ../api
     restart: always
     environment:
       # Use the shared environment variables.

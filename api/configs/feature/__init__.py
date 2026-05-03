@@ -625,6 +625,17 @@ class InnerAPIConfig(BaseSettings):
     )
 
 
+class AdminAPIConfig(BaseSettings):
+    """
+    Configuration for admin API (provisioning) functionality
+    """
+
+    ADMIN_API_KEY: str | None = Field(
+        description="API key for accessing the admin API. Must be set to enable the admin API.",
+        default=None,
+    )
+
+
 class LoggingConfig(BaseSettings):
     """
     Configuration for application logging
@@ -1411,6 +1422,7 @@ class FeatureConfig(
     FileUploadConfig,
     HttpConfig,
     InnerAPIConfig,
+    AdminAPIConfig,
     IndexingConfig,
     LoggingConfig,
     MailConfig,

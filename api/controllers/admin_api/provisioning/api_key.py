@@ -1,7 +1,7 @@
-"""Provisioning inner API for app API key management.
+"""Provisioning admin API for app API key management.
 
 Provides CRUD endpoints for app API keys within a workspace.
-Authenticated via ``X-Inner-Api-Key`` (``enterprise_inner_api_only``).
+Authenticated via ``X-Admin-Api-Key`` (``admin_api_only``).
 """
 
 from flask_restx import Resource
@@ -9,10 +9,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import DataError
 
+from controllers.admin_api import admin_api_ns
+from controllers.admin_api.wraps import admin_api_only
 from controllers.common.schema import register_schema_models
 from controllers.console.wraps import setup_required
-from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import enterprise_inner_api_only
 from extensions.ext_database import db
 from models.enums import ApiTokenType
 from models.model import ApiToken, App
@@ -28,7 +28,7 @@ class ProvisioningApiKeyCreatePayload(BaseModel):
     name: str | None = Field(default=None, description="Optional name for the API key")
 
 
-register_schema_models(inner_api_ns, ProvisioningApiKeyCreatePayload)
+register_schema_models(admin_api_ns, ProvisioningApiKeyCreatePayload)
 
 
 # ---------------------------------------------------------------------------
@@ -36,14 +36,14 @@ register_schema_models(inner_api_ns, ProvisioningApiKeyCreatePayload)
 # ---------------------------------------------------------------------------
 
 
-@inner_api_ns.route("/provisioning/workspaces/<string:workspace_id>/apps/<string:app_id>/api-keys")
+@admin_api_ns.route("/provisioning/workspaces/<string:workspace_id>/apps/<string:app_id>/api-keys")
 class ProvisioningAppApiKeyListApi(Resource):
     """List and create API keys for an app."""
 
     @setup_required
-    @enterprise_inner_api_only
-    @inner_api_ns.doc("provisioning_list_app_api_keys")
-    @inner_api_ns.doc(description="List API keys for an app")
+    @admin_api_only
+    @admin_api_ns.doc("admin_provisioning_list_app_api_keys")
+    @admin_api_ns.doc(description="List API keys for an app")
     def get(self, workspace_id: str, app_id: str):
         try:
             app = db.session.get(App, app_id)
@@ -72,9 +72,9 @@ class ProvisioningAppApiKeyListApi(Resource):
         return {"data": result}
 
     @setup_required
-    @enterprise_inner_api_only
-    @inner_api_ns.doc("provisioning_create_app_api_key")
-    @inner_api_ns.doc(description="Create a new API key for an app")
+    @admin_api_only
+    @admin_api_ns.doc("admin_provisioning_create_app_api_key")
+    @admin_api_ns.doc(description="Create a new API key for an app")
     def post(self, workspace_id: str, app_id: str):
         try:
             app = db.session.get(App, app_id)
@@ -110,16 +110,16 @@ class ProvisioningAppApiKeyListApi(Resource):
         }, 201
 
 
-@inner_api_ns.route(
+@admin_api_ns.route(
     "/provisioning/workspaces/<string:workspace_id>/apps/<string:app_id>/api-keys/<string:api_key_id>"
 )
 class ProvisioningAppApiKeyApi(Resource):
     """Delete an API key for an app."""
 
     @setup_required
-    @enterprise_inner_api_only
-    @inner_api_ns.doc("provisioning_delete_app_api_key")
-    @inner_api_ns.doc(description="Delete an API key for an app")
+    @admin_api_only
+    @admin_api_ns.doc("admin_provisioning_delete_app_api_key")
+    @admin_api_ns.doc(description="Delete an API key for an app")
     def delete(self, workspace_id: str, app_id: str, api_key_id: str):
         try:
             app = db.session.get(App, app_id)

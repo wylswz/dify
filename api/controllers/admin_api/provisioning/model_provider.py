@@ -1,22 +1,24 @@
-"""Provisioning inner API for model provider credential management.
+"""Provisioning admin API for model provider credential management.
 
 Provides CRUD endpoints for model provider credentials within a workspace.
-Authenticated via ``X-Inner-Api-Key`` (``enterprise_inner_api_only``).
+Authenticated via ``X-Admin-Api-Key`` (``admin_api_only``).
 """
 
 from typing import Any
 
+from flask import abort
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 
+from controllers.admin_api import admin_api_ns
+from controllers.admin_api.wraps import admin_api_only
 from controllers.common.schema import register_schema_models
 from controllers.console.wraps import setup_required
-from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import enterprise_inner_api_only
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.helper import uuid_value
+from services.errors.app_model_config import ProviderNotFoundError
 from services.model_provider_service import ModelProviderService
 
 
@@ -60,7 +62,7 @@ class ProvisioningCredentialSwitchPayload(BaseModel):
 
 
 register_schema_models(
-    inner_api_ns,
+    admin_api_ns,
     ProvisioningCredentialCreatePayload,
     ProvisioningCredentialUpdatePayload,
     ProvisioningCredentialDeletePayload,
@@ -73,17 +75,20 @@ register_schema_models(
 # ---------------------------------------------------------------------------
 
 
-@inner_api_ns.route("/provisioning/workspaces/<string:workspace_id>/model-providers/<path:provider>/credentials")
+@admin_api_ns.route("/provisioning/workspaces/<string:workspace_id>/model-providers/<path:provider>/credentials")
 class ProvisioningModelProviderCredentialApi(Resource):
     """CRUD for model provider credentials."""
 
     @setup_required
-    @enterprise_inner_api_only
-    @inner_api_ns.doc("provisioning_get_model_provider_credentials")
-    @inner_api_ns.doc(description="Get credentials for a model provider")
+    @admin_api_only
+    @admin_api_ns.doc("admin_provisioning_get_model_provider_credentials")
+    @admin_api_ns.doc(description="Get credentials for a model provider")
     def get(self, workspace_id: str, provider: str):
         service = ModelProviderService()
-        credentials = service.get_provider_credential(tenant_id=workspace_id, provider=provider)
+        try:
+            credentials = service.get_provider_credential(tenant_id=workspace_id, provider=provider)
+        except ProviderNotFoundError:
+            abort(404, description=f"Provider {provider} does not exist.")
 
         # Also fetch the credential_id from the provider list
         provider_list = service.get_provider_list(tenant_id=workspace_id)
@@ -97,12 +102,12 @@ class ProvisioningModelProviderCredentialApi(Resource):
         return jsonable_encoder({"credentials": credentials, "credential_id": credential_id})
 
     @setup_required
-    @enterprise_inner_api_only
-    @inner_api_ns.doc("provisioning_create_model_provider_credential")
-    @inner_api_ns.doc(description="Create a new credential for a model provider")
-    @inner_api_ns.expect(inner_api_ns.models[ProvisioningCredentialCreatePayload.__name__])
+    @admin_api_only
+    @admin_api_ns.doc("admin_provisioning_create_model_provider_credential")
+    @admin_api_ns.doc(description="Create a new credential for a model provider")
+    @admin_api_ns.expect(admin_api_ns.models[ProvisioningCredentialCreatePayload.__name__])
     def post(self, workspace_id: str, provider: str):
-        args = ProvisioningCredentialCreatePayload.model_validate(inner_api_ns.payload or {})
+        args = ProvisioningCredentialCreatePayload.model_validate(admin_api_ns.payload or {})
 
         service = ModelProviderService()
         try:
@@ -127,12 +132,12 @@ class ProvisioningModelProviderCredentialApi(Resource):
         return jsonable_encoder({"result": "success", "credential_id": credential_id}), 201
 
     @setup_required
-    @enterprise_inner_api_only
-    @inner_api_ns.doc("provisioning_update_model_provider_credential")
-    @inner_api_ns.doc(description="Update an existing credential for a model provider")
-    @inner_api_ns.expect(inner_api_ns.models[ProvisioningCredentialUpdatePayload.__name__])
+    @admin_api_only
+    @admin_api_ns.doc("admin_provisioning_update_model_provider_credential")
+    @admin_api_ns.doc(description="Update an existing credential for a model provider")
+    @admin_api_ns.expect(admin_api_ns.models[ProvisioningCredentialUpdatePayload.__name__])
     def put(self, workspace_id: str, provider: str):
-        args = ProvisioningCredentialUpdatePayload.model_validate(inner_api_ns.payload or {})
+        args = ProvisioningCredentialUpdatePayload.model_validate(admin_api_ns.payload or {})
 
         service = ModelProviderService()
         try:
@@ -149,12 +154,12 @@ class ProvisioningModelProviderCredentialApi(Resource):
         return {"result": "success"}
 
     @setup_required
-    @enterprise_inner_api_only
-    @inner_api_ns.doc("provisioning_delete_model_provider_credential")
-    @inner_api_ns.doc(description="Delete a credential for a model provider")
-    @inner_api_ns.expect(inner_api_ns.models[ProvisioningCredentialDeletePayload.__name__])
+    @admin_api_only
+    @admin_api_ns.doc("admin_provisioning_delete_model_provider_credential")
+    @admin_api_ns.doc(description="Delete a credential for a model provider")
+    @admin_api_ns.expect(admin_api_ns.models[ProvisioningCredentialDeletePayload.__name__])
     def delete(self, workspace_id: str, provider: str):
-        args = ProvisioningCredentialDeletePayload.model_validate(inner_api_ns.payload or {})
+        args = ProvisioningCredentialDeletePayload.model_validate(admin_api_ns.payload or {})
 
         service = ModelProviderService()
         service.remove_provider_credential(
@@ -166,19 +171,19 @@ class ProvisioningModelProviderCredentialApi(Resource):
         return {"result": "success"}, 204
 
 
-@inner_api_ns.route(
+@admin_api_ns.route(
     "/provisioning/workspaces/<string:workspace_id>/model-providers/<path:provider>/credentials/switch"
 )
 class ProvisioningModelProviderCredentialSwitchApi(Resource):
     """Switch the active credential for a model provider."""
 
     @setup_required
-    @enterprise_inner_api_only
-    @inner_api_ns.doc("provisioning_switch_model_provider_credential")
-    @inner_api_ns.doc(description="Switch the active credential for a model provider")
-    @inner_api_ns.expect(inner_api_ns.models[ProvisioningCredentialSwitchPayload.__name__])
+    @admin_api_only
+    @admin_api_ns.doc("admin_provisioning_switch_model_provider_credential")
+    @admin_api_ns.doc(description="Switch the active credential for a model provider")
+    @admin_api_ns.expect(admin_api_ns.models[ProvisioningCredentialSwitchPayload.__name__])
     def post(self, workspace_id: str, provider: str):
-        args = ProvisioningCredentialSwitchPayload.model_validate(inner_api_ns.payload or {})
+        args = ProvisioningCredentialSwitchPayload.model_validate(admin_api_ns.payload or {})
 
         service = ModelProviderService()
         service.switch_active_provider_credential(
@@ -190,14 +195,14 @@ class ProvisioningModelProviderCredentialSwitchApi(Resource):
         return {"result": "success"}
 
 
-@inner_api_ns.route("/provisioning/workspaces/<string:workspace_id>/model-providers")
+@admin_api_ns.route("/provisioning/workspaces/<string:workspace_id>/model-providers")
 class ProvisioningModelProviderListApi(Resource):
     """List model providers for a workspace."""
 
     @setup_required
-    @enterprise_inner_api_only
-    @inner_api_ns.doc("provisioning_list_model_providers")
-    @inner_api_ns.doc(description="List model providers for a workspace")
+    @admin_api_only
+    @admin_api_ns.doc("admin_provisioning_list_model_providers")
+    @admin_api_ns.doc(description="List model providers for a workspace")
     def get(self, workspace_id: str):
         service = ModelProviderService()
         provider_list = service.get_provider_list(tenant_id=workspace_id)
