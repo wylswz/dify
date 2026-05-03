@@ -18,6 +18,10 @@ inner_api_ns = Namespace("inner_api", description="Internal API operations", pat
 from . import mail as _mail
 from .app import dsl as _app_dsl
 from .plugin import plugin as _plugin
+from .provisioning import api_key as _prov_api_key
+from .provisioning import app as _prov_app
+from .provisioning import model_provider as _prov_model_provider
+from .provisioning import plugin as _prov_plugin
 from .workspace import workspace as _workspace
 
 api.add_namespace(inner_api_ns)
@@ -26,6 +30,10 @@ __all__ = [
     "_app_dsl",
     "_mail",
     "_plugin",
+    "_prov_api_key",
+    "_prov_app",
+    "_prov_model_provider",
+    "_prov_plugin",
     "_workspace",
     "api",
     "bp",
