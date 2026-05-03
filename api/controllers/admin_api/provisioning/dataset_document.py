@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.admin_api import admin_api_ns
-from controllers.admin_api.wraps import admin_api_only, setup_required
+from controllers.admin_api.wraps import admin_api_only
 from controllers.console.wraps import account_initialization_required
 from controllers.console.datasets.datasets_document import DocumentResponse
 from libs.login import current_account_with_tenant
@@ -24,7 +24,6 @@ class ProvisioningDocumentCreatePayload(BaseModel):
 
 @admin_api_ns.route("/provisioning/workspaces/<workspace_id>/datasets/<dataset_id>/documents/<document_id>")
 class ProvisioningDocumentApi(Resource):
-    @setup_required
     @admin_api_only
     @admin_api_ns.doc("admin_provisioning_get_document")
     @admin_api_ns.doc(description="Get document details")
@@ -34,7 +33,6 @@ class ProvisioningDocumentApi(Resource):
             abort(404, description="Document not found")
         return DocumentResponse.model_validate(document, from_attributes=True).model_dump(mode="json")
 
-    @setup_required
     @admin_api_only
     @admin_api_ns.doc("admin_provisioning_delete_document")
     @admin_api_ns.doc(description="Delete document")
@@ -54,7 +52,6 @@ class ProvisioningDocumentApi(Resource):
 
 @admin_api_ns.route("/provisioning/workspaces/<workspace_id>/datasets/<dataset_id>/documents")
 class ProvisioningDocumentListApi(Resource):
-    @setup_required
     @admin_api_only
     @account_initialization_required
     @admin_api_ns.doc("admin_provisioning_create_document")

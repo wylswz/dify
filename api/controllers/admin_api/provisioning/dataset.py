@@ -6,7 +6,7 @@ from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field
 
 from controllers.admin_api import admin_api_ns
-from controllers.admin_api.wraps import admin_api_only, setup_required
+from controllers.admin_api.wraps import admin_api_only
 from controllers.console.datasets.datasets import (
     _validate_indexing_technique,
     dataset_detail_fields,
@@ -61,7 +61,6 @@ class ProvisioningDatasetListApi(Resource):
 
 @admin_api_ns.route("/provisioning/workspaces/<workspace_id>/datasets/<dataset_id>")
 class ProvisioningDatasetApi(Resource):
-    @setup_required
     @admin_api_only
     @admin_api_ns.doc("admin_provisioning_get_dataset")
     @admin_api_ns.doc(description="Get dataset details")
@@ -71,7 +70,6 @@ class ProvisioningDatasetApi(Resource):
             abort(404, description="Dataset not found")
         return marshal(dataset, dataset_detail_fields)
 
-    @setup_required
     @admin_api_only
     @account_initialization_required
     @admin_api_ns.doc("admin_provisioning_create_dataset")
@@ -96,7 +94,6 @@ class ProvisioningDatasetApi(Resource):
 
         return marshal(dataset, dataset_detail_fields), 201
 
-    @setup_required
     @admin_api_only
     @account_initialization_required
     @admin_api_ns.doc("admin_provisioning_update_dataset")
