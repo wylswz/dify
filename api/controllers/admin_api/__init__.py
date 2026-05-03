@@ -28,6 +28,8 @@ admin_api_ns = Namespace("admin_api", description="Admin API provisioning operat
 
 from .provisioning import api_key as _prov_api_key
 from .provisioning import app as _prov_app
+from .provisioning import dataset as _prov_dataset
+from .provisioning import dataset_document as _prov_dataset_document
 from .provisioning import model_provider as _prov_model_provider
 from .provisioning import plugin as _prov_plugin
 from .provisioning import tool_provider as _prov_tool_provider
@@ -37,6 +39,8 @@ api.add_namespace(admin_api_ns)
 __all__ = [
     "_prov_api_key",
     "_prov_app",
+    "_prov_dataset",
+    "_prov_dataset_document",
     "_prov_model_provider",
     "_prov_plugin",
     "_prov_tool_provider",
