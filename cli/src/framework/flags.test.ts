@@ -5,7 +5,7 @@ const meta = {
   flags: {
     output: Flags.string({ description: 'output format', char: 'o' }),
     verbose: Flags.boolean({ description: 'verbose mode', char: 'v' }),
-    count: Flags.integer({ description: 'count', default: 5 }),
+    count: Flags.number({ description: 'count', default: 5 }),
     format: Flags.string({ description: 'format', default: 'text' }),
   },
   args: {
@@ -131,7 +131,7 @@ describe('parseArgv', () => {
 
     it('collects repeated short flags into an array', () => {
       const multipleShortMeta = {
-        flags: { label: Flags.string({ description: 'labels', multiple: true, char: 'l' }) },
+        flags: { label: Flags.stringArray({ description: 'labels', char: 'l' }) },
         args: {},
       }
       const { flags } = parseArgv(['-l', 'foo', '-l', 'bar'], multipleShortMeta)
@@ -187,8 +187,8 @@ describe('parseArgv', () => {
     })
 
     it('Flags.integer produces integer type definition', () => {
-      const def = Flags.integer({ description: 'test' })
-      expect(def.type).toBe('integer')
+      const def = Flags.number({ description: 'test' })
+      expect(def.type).toBe('number')
     })
 
     it('Args.string produces an arg definition with required when set', () => {

@@ -4,13 +4,12 @@ export type ArgValueType = string | boolean | number | string[]
 export type OptionalArgValueType = ArgValueType | undefined
 
 export type FlagDefinition<T extends OptionalArgValueType = OptionalArgValueType> = {
-  readonly type: 'string' | 'boolean' | 'integer'
+  readonly type: 'string' | 'boolean' | 'number'
   readonly description: string
   readonly char?: string
   readonly default?: ArgValueType
   readonly multiple?: boolean
-  readonly helpGroup?: string
-  readonly _flagValue?: T
+  readonly _?: T
 }
 
 export type ArgDefinition<T extends string | undefined = string | undefined> = {

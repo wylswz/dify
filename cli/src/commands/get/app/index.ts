@@ -25,7 +25,7 @@ export default class GetApp extends DifyCommand {
       description: 'list apps across every workspace the bearer can see',
       default: false,
     }),
-    'page': Flags.integer({ description: 'page number', default: 1 }),
+    'page': Flags.number({ description: 'page number', default: 1 }),
     'limit': Flags.string({ description: 'page size [1..200]' }),
     'mode': Flags.string({ description: 'filter by app mode (chat|completion|workflow|agent-chat|advanced-chat)' }),
     'name': Flags.string({ description: 'filter by app name (server-side substring)' }),

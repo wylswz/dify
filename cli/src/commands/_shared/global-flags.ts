@@ -4,9 +4,8 @@ import { Flags } from '../../framework/flags.js'
 
 export const HTTP_RETRY_DEFAULT = 3
 
-export const httpRetryFlag = Flags.integer({
+export const httpRetryFlag = Flags.number({
   description: 'HTTP retry attempts for GET/PUT/DELETE on transient errors. 0 disables. Overrides DIFYCTL_HTTP_RETRY.',
-  helpGroup: 'GLOBAL',
 })
 
 export type ResolveRetryAttemptsOpts = {

@@ -1,40 +1,48 @@
 import type { ArgDefinition, CommandMeta, FlagDefinition, ParsedArgs, ParsedFlags } from './types.js'
 
-function stringFlag<const Opts extends { description: string, char?: string, default?: string, multiple?: boolean, helpGroup?: string }>(
+type flagMeta = {
+  description: string
+  char?: string
+}
+
+function stringFlag<const Opts extends { default?: string } & flagMeta>(
   opts: Opts,
 ): FlagDefinition<string> {
   return {
-    type: 'string',
-    multiple: false,
     ...opts,
+    multiple: false,
+    type: 'string',
   }
 }
 
-function stringRepeatedFlag<const Opts extends { description: string, char?: string, default?: string[], multiple?: boolean, helpGroup?: string }>(
+function stringRepeatedFlag<const Opts extends { default?: string[] } & flagMeta>(
   opts: Opts,
 ): FlagDefinition<string[]> {
   return {
-    type: 'string',
-    multiple: true,
     ...opts,
+    multiple: true,
+    type: 'string',
   }
 }
 
-function booleanFlag(opts: { description: string, char?: string, default?: boolean, helpGroup?: string }): FlagDefinition<boolean> {
-  return { type: 'boolean', ...opts }
+function booleanFlag(opts: { default?: boolean } & flagMeta): FlagDefinition<boolean> {
+  return {
+    ...opts,
+    type: 'boolean',
+  }
 }
 
-function integerFlag<const Opts extends { description: string, char?: string, default?: number, helpGroup?: string }>(
+function numberFlag<const Opts extends { default?: number } & flagMeta>(
   opts: Opts,
 ): FlagDefinition<Opts extends { default: number } ? number : number | undefined> {
-  return { type: 'integer', ...opts } as FlagDefinition<Opts extends { default: number } ? number : number | undefined>
+  return { ...opts, type: 'number' }
 }
 
 export const Flags = {
   string: stringFlag,
   stringArray: stringRepeatedFlag,
   boolean: booleanFlag,
-  integer: integerFlag,
+  number: numberFlag,
 }
 
 function stringArg<const Opts extends { description: string, required?: boolean }>(
@@ -49,7 +57,7 @@ export const Args = {
 
 function coerceFlagValue(raw: string, def: FlagDefinition): string | boolean | number {
   switch (def.type) {
-    case 'integer': {
+    case 'number': {
       const n = Number(raw)
       if (Number.isNaN(n))
         throw new Error(`expected integer, got ${JSON.stringify(raw)}`)
