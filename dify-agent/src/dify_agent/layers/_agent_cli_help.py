@@ -1,4 +1,7 @@
-"""Loader for the generated ``dify-agent`` CLI help snapshot."""
+"""Loader for the generated ``dify-agent`` CLI help snapshot.
+
+run `make -C dify-agent-runtime gen-cli-help` to re-generate the snapshot.
+"""
 
 from __future__ import annotations
 
