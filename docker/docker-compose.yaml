@@ -226,7 +226,7 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:8ff92c9ef87ecaecd3b4115d6d050794b7dc2088
     environment:
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -273,7 +273,7 @@ services:
   # WebSocket service for workflow collaboration.
   api_websocket:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:8ff92c9ef87ecaecd3b4115d6d050794b7dc2088
     profiles:
       - collaboration
     environment:
@@ -299,7 +299,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:8ff92c9ef87ecaecd3b4115d6d050794b7dc2088
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -345,7 +345,7 @@ services:
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.16.0-rc1
+    image: langgenius/dify-api:8ff92c9ef87ecaecd3b4115d6d050794b7dc2088
     environment:
       MODE: beat
     depends_on:
@@ -378,7 +378,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.16.0-rc1
+    image: langgenius/dify-web:8ff92c9ef87ecaecd3b4115d6d050794b7dc2088
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
@@ -530,7 +530,7 @@ services:
 
   # Local sandbox for Dify Agent shell workspaces.
   local_sandbox:
-    image: langgenius/dify-agent-local-sandbox:1.16.0-rc1
+    image: langgenius/dify-agent-local-sandbox:8ff92c9ef87ecaecd3b4115d6d050794b7dc2088
     restart: always
     environment:
       - SHELLCTL_AUTH_TOKEN=${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}
@@ -541,6 +541,12 @@ services:
       - SHELLCTL_LANDLOCK_RW_PATHS
       - SHELLCTL_LANDLOCK_RO_PATHS
       - SHELLCTL_LANDLOCK_RW_DEV_PATHS
+      # Route all outbound HTTP(S) through ssrf_proxy so the shell workspace gets
+      # the same SSRF filtering as api/sandbox. agent_backend and localhost bypass
+      # the proxy (NO_PROXY) because they are reached directly on the internal network.
+      - HTTP_PROXY=${DIFY_AGENT_SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
+      - HTTPS_PROXY=${DIFY_AGENT_SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
+      - NO_PROXY=${DIFY_AGENT_SANDBOX_NO_PROXY:-localhost,127.0.0.1,agent_backend,local_sandbox}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
       interval: 30s
@@ -548,7 +554,11 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - default
+      # Only reachable network: the isolated (internal) agent sandbox network.
+      # Outside access is possible ONLY via ssrf_proxy (SSRF-filtered); direct
+      # internet and internal services (api, redis, db, plugin_daemon) are blocked.
+      # agent_backend also joins this network for direct shellctl traffic.
+      - agent_sandbox_network
 
   # plugin daemon
   plugin_daemon:
@@ -639,7 +649,7 @@ services:
 
   # Dify Agent backend service.
   agent_backend:
-    image: langgenius/dify-agent-backend:1.16.0-rc1
+    image: langgenius/dify-agent-backend:8ff92c9ef87ecaecd3b4115d6d050794b7dc2088
     restart: always
     env_file:
       - path: ./envs/core-services/dify-agent.env
@@ -673,7 +683,10 @@ services:
       local_sandbox:
         condition: service_started
     networks:
+      # `default` for internal services (api, redis, plugin_daemon);
+      # `agent_sandbox_network` to bridge with local_sandbox.
       - default
+      - agent_sandbox_network
 
   # ssrf_proxy server
   # for more information, please refer to
@@ -699,6 +712,8 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+      # Provides filtered public egress for the isolated local_sandbox.
+      - agent_sandbox_network
 
   # Certbot service
   # use `docker-compose --profile certbot up` to start the certbot service.
@@ -1253,6 +1268,14 @@ services:
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
+    driver: bridge
+    internal: true
+  # Isolates local_sandbox: it joins ONLY this network. It is `internal` (no
+  # direct NAT egress), so the shell workspace CANNOT reach the internet on its
+  # own and CANNOT reach internal services (api, redis, db, plugin_daemon) on the
+  # `default` network. Its only outside path is ssrf_proxy (SSRF-filtered public
+  # egress); it can also reach agent_backend, which joins this network too.
+  agent_sandbox_network:
     driver: bridge
     internal: true
   milvus:
