@@ -53,6 +53,8 @@ from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapt
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
+from core.workflow.nodes.intent_executor.entities import INTENT_EXECUTOR_NODE_TYPE, IntentExecutorNodeData
+from core.workflow.nodes.intent_executor.invoker import IntentExecutorInvoker
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.entities.base_node_data import BaseNodeData
@@ -491,6 +493,16 @@ class DifyNodeFactory(NodeFactory):
                 "runtime": self._tool_runtime,
             },
             BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
+            INTENT_EXECUTOR_NODE_TYPE: lambda: {
+                "invoker": IntentExecutorInvoker(
+                    run_context=self._dify_context,
+                    model_instance=self._build_model_instance_for_llm_node(
+                        cast(IntentExecutorNodeData, resolved_node_data)
+                    ),
+                    request_metadata=self._build_llm_request_metadata(),
+                    model_parameters=cast(IntentExecutorNodeData, resolved_node_data).model.completion_params,
+                ),
+            },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
@@ -617,14 +629,7 @@ class DifyNodeFactory(NodeFactory):
     ) -> dict[str, object]:
         validated_node_data = cast(LLMCompatibleNodeData, node_data)
         model_instance = self._build_model_instance_for_llm_node(validated_node_data)
-        request_metadata: dict[str, object] = {"app_id": self._dify_context.app_id}
-        app_type = self._dify_context.app_type
-        created_by = self._dify_context.created_by
-        if app_type is not None:
-            request_metadata["app_type"] = app_type
-            request_metadata["created_by"] = created_by_from_app_type(app_type)
-        elif created_by is not None:
-            request_metadata["created_by"] = created_by
+        request_metadata = self._build_llm_request_metadata()
 
         node_model_instance = (
             self._wrap_model_instance_for_node(
@@ -662,6 +667,17 @@ class DifyNodeFactory(NodeFactory):
             node_init_kwargs["default_query_selector"] = system_variable_selector(SystemVariableKey.QUERY)
             node_init_kwargs["polling_finalizer"] = cast(DifyPreparedLLM, node_model_instance).finalize_llm_polling
         return node_init_kwargs
+
+    def _build_llm_request_metadata(self) -> dict[str, object]:
+        request_metadata: dict[str, object] = {"app_id": self._dify_context.app_id}
+        app_type = self._dify_context.app_type
+        created_by = self._dify_context.created_by
+        if app_type is not None:
+            request_metadata["app_type"] = app_type
+            request_metadata["created_by"] = created_by_from_app_type(app_type)
+        elif created_by is not None:
+            request_metadata["created_by"] = created_by
+        return request_metadata
 
     @staticmethod
     def _wrap_model_instance_for_node(
@@ -713,7 +729,9 @@ class DifyNodeFactory(NodeFactory):
 
         return checker
 
-    def _build_model_instance_for_llm_node(self, node_data: LLMCompatibleNodeData) -> ModelInstance:
+    def _build_model_instance_for_llm_node(
+        self, node_data: LLMCompatibleNodeData | IntentExecutorNodeData
+    ) -> ModelInstance:
         node_data_model = node_data.model
         model_instance, _ = fetch_model_config(
             node_data_model=node_data_model,

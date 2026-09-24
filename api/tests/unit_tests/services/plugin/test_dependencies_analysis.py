@@ -113,6 +113,49 @@ class TestExtractExternalNodeDependencies:
         assert DependenciesAnalysisService.extract_external_node_dependencies(node_data) == expected
 
 
+class TestExtractIntentExecutorDependencies:
+    def test_model_and_tools(self):
+        node_data = {
+            "type": "intent-executor",
+            "model": {"provider": "acme/llm/llm", "name": "model", "mode": "chat"},
+            "intents": ["start", "intents"],
+            "tools": [
+                {"type": "builtin", "provider_name": "acme/search"},
+                {"provider_type": "plugin", "plugin_id": "acme/custom"},
+                {"type": "api", "provider_name": "8d0d5d40-0000-0000-0000-000000000000"},
+                {"type": "mcp", "provider_name": "mcp-server-id"},
+                {"type": "workflow", "provider_name": "workflow-id"},
+            ],
+        }
+
+        assert DependenciesAnalysisService.extract_external_node_dependencies(node_data) == [
+            "acme/llm",
+            "acme/search",
+            "acme/custom",
+        ]
+
+    def test_invalid_tool_provider_does_not_drop_model_dependency(self):
+        node_data = {
+            "type": "intent-executor",
+            "model": {"provider": "langgenius/openai/openai"},
+            "tools": [{"type": "builtin", "provider_name": "bad/provider/format/extra"}],
+        }
+
+        assert DependenciesAnalysisService.extract_external_node_dependencies(node_data) == ["langgenius/openai"]
+
+    def test_invalid_model_provider_still_extracts_tools(self):
+        node_data = {
+            "type": "intent-executor",
+            "model": {"provider": "bad/provider/format/extra"},
+            "tools": [{"type": "builtin", "provider_name": "acme/search"}],
+        }
+
+        assert DependenciesAnalysisService.extract_external_node_dependencies(node_data) == ["acme/search"]
+
+    def test_missing_model_and_tools_returns_empty(self):
+        assert DependenciesAnalysisService.extract_external_node_dependencies({"type": "intent-executor"}) == []
+
+
 class TestGetLeakedDependencies:
     def _make_dependency(self, identifier: str, dep_type=PluginDependencyType.Marketplace):
         return PluginDependency(

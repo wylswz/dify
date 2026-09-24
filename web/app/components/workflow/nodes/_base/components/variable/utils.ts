@@ -19,6 +19,7 @@ import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
+import type { IntentExecutorNodeType } from '@/app/components/workflow/nodes/intent-executor/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
@@ -45,6 +46,7 @@ import {
   getGlobalVars,
   HTTP_REQUEST_OUTPUT_STRUCT,
   HUMAN_INPUT_OUTPUT_STRUCT,
+  INTENT_EXECUTOR_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
   PARAMETER_EXTRACTOR_COMMON_STRUCT,
@@ -491,6 +493,11 @@ const formatItem = (
         }),
         ...PARAMETER_EXTRACTOR_COMMON_STRUCT,
       ]
+      break
+    }
+
+    case BlockEnum.IntentExecutor: {
+      res.vars = [...INTENT_EXECUTOR_OUTPUT_STRUCT]
       break
     }
 
@@ -1391,6 +1398,14 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
       break
     }
 
+    case BlockEnum.IntentExecutor: {
+      const payload = data as IntentExecutorNodeType
+      res = [payload.intents]
+      const varInInstructions = matchNotSystemVars([payload.instruction || ''])
+      res.push(...varInInstructions)
+      break
+    }
+
     case BlockEnum.Iteration: {
       res = [(data as IterationNodeType).iterator_selector]
       break
@@ -1516,6 +1531,11 @@ export const getNodeUsedVarPassToServerKey = (
 
     case BlockEnum.ParameterExtractor: {
       res = 'query'
+      break
+    }
+
+    case BlockEnum.IntentExecutor: {
+      res = 'intents'
       break
     }
 
@@ -1848,6 +1868,16 @@ export const updateNodeVars = (
         )
         break
       }
+      case BlockEnum.IntentExecutor: {
+        const payload = data as IntentExecutorNodeType
+        if (payload.intents.join('.') === oldVarSelector.join('.')) payload.intents = newVarSelector
+        payload.instruction = replaceOldVarInText(
+          payload.instruction,
+          oldVarSelector,
+          newVarSelector,
+        )
+        break
+      }
       case BlockEnum.Iteration: {
         const payload = data as IterationNodeType
         if (payload.iterator_selector.join('.') === oldVarSelector.join('.'))
@@ -2047,6 +2077,11 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
         })
       }
 
+      break
+    }
+
+    case BlockEnum.IntentExecutor: {
+      varsToValueSelectorList(INTENT_EXECUTOR_OUTPUT_STRUCT, [id], res)
       break
     }
 

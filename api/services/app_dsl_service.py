@@ -31,6 +31,7 @@ from core.workflow.llm_environment_variable import (
     resolve_llm_model_config,
     should_resolve_llm_model_selector,
 )
+from core.workflow.nodes.intent_executor.entities import INTENT_EXECUTOR_NODE_TYPE
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
@@ -915,6 +916,10 @@ class AppDslService:
             # filter credential id from agent node
             if not include_secret and data_type == BuiltinNodeTypes.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
+                    tool.pop("credential_id", None)
+            # filter credential id from intent executor node tools
+            if not include_secret and data_type == INTENT_EXECUTOR_NODE_TYPE:
+                for tool in node_data.get("tools", []):
                     tool.pop("credential_id", None)
             if data_type == TRIGGER_SCHEDULE_NODE_TYPE:
                 # override the config with the default config

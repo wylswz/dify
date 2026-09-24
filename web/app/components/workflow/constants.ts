@@ -120,6 +120,7 @@ export const SUPPORT_OUTPUT_VARS_NODE: BlockEnum[] = [
   BlockEnum.ListFilter,
   BlockEnum.Agent,
   BlockEnum.AgentV2,
+  BlockEnum.IntentExecutor,
   BlockEnum.DataSource,
   BlockEnum.HumanInput,
 ]
@@ -229,6 +230,21 @@ export const HUMAN_INPUT_OUTPUT_STRUCT: Var[] = [
   {
     variable: '__rendered_content',
     type: VarType.string,
+  },
+]
+
+export const INTENT_EXECUTOR_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'results',
+    type: VarType.arrayObject,
+  },
+  {
+    variable: 'files',
+    type: VarType.arrayFile,
+  },
+  {
+    variable: 'usage',
+    type: VarType.object,
   },
 ]
 

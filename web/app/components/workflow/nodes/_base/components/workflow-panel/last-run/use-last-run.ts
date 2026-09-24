@@ -10,6 +10,7 @@ import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/
 import useHttpRequestSingleRunFormParams from '@/app/components/workflow/nodes/http/use-single-run-form-params'
 import useHumanInputSingleRunFormParams from '@/app/components/workflow/nodes/human-input/hooks/use-single-run-form-params'
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
+import useIntentExecutorSingleRunFormParams from '@/app/components/workflow/nodes/intent-executor/use-single-run-form-params'
 import useIterationSingleRunFormParams from '@/app/components/workflow/nodes/iteration/use-single-run-form-params'
 import useKnowledgeBaseSingleRunFormParams from '@/app/components/workflow/nodes/knowledge-base/use-single-run-form-params'
 import useKnowledgeRetrievalSingleRunFormParams from '@/app/components/workflow/nodes/knowledge-retrieval/use-single-run-form-params'
@@ -43,6 +44,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.HttpRequest]: useHttpRequestSingleRunFormParams,
   [BlockEnum.Tool]: useToolSingleRunFormParams,
   [BlockEnum.ParameterExtractor]: useParameterExtractorSingleRunFormParams,
+  [BlockEnum.IntentExecutor]: useIntentExecutorSingleRunFormParams,
   [BlockEnum.Iteration]: useIterationSingleRunFormParams,
   [BlockEnum.Agent]: undefined,
   [BlockEnum.AgentV2]: undefined,
@@ -84,6 +86,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.QuestionClassifier]: undefined,
   [BlockEnum.HttpRequest]: undefined,
   [BlockEnum.ParameterExtractor]: undefined,
+  [BlockEnum.IntentExecutor]: undefined,
   [BlockEnum.Iteration]: undefined,
   [BlockEnum.Agent]: undefined,
   [BlockEnum.AgentV2]: undefined,

@@ -868,6 +868,83 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
     assert "credential_id" not in nodes[2]["data"]["agent_parameters"]["tools"]["value"][0]
 
 
+def test_append_workflow_export_data_filters_intent_executor_tool_credentials(
+    service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
+):
+    workflow = _workflow(
+        graph={
+            "nodes": [
+                {
+                    "data": {
+                        "type": "intent-executor",
+                        "model": {"provider": "acme/llm/llm", "name": "model", "mode": "chat"},
+                        "intents": ["start", "intents"],
+                        "tools": [
+                            {
+                                "provider_name": "acme/search",
+                                "tool_name": "search",
+                                "credential_id": "tool-secret",
+                            }
+                        ],
+                    }
+                }
+            ]
+        }
+    )
+    generate_dependencies = Mock(return_value=[])
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.DependenciesAnalysisService.generate_dependencies",
+        generate_dependencies,
+    )
+    export_data = {}
+
+    service._append_workflow_export_data(
+        export_data=export_data,
+        snippet=_snippet(),
+        workflow=workflow,
+        include_secret=False,
+    )
+
+    node = export_data["workflow"]["graph"]["nodes"][0]["data"]
+    assert "credential_id" not in node["tools"][0]
+    dependencies = generate_dependencies.call_args.kwargs["dependencies"]
+    assert "acme/llm" in dependencies
+    assert "acme/search" in dependencies
+
+
+def test_append_workflow_export_data_keeps_intent_executor_credentials_with_secret(
+    service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
+):
+    workflow = _workflow(
+        graph={
+            "nodes": [
+                {
+                    "data": {
+                        "type": "intent-executor",
+                        "model": {"provider": "acme/llm/llm", "name": "model", "mode": "chat"},
+                        "tools": [{"provider_name": "acme/search", "tool_name": "s", "credential_id": "keep"}],
+                    }
+                }
+            ]
+        }
+    )
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.DependenciesAnalysisService.generate_dependencies",
+        Mock(return_value=[]),
+    )
+    export_data = {}
+
+    service._append_workflow_export_data(
+        export_data=export_data,
+        snippet=_snippet(),
+        workflow=workflow,
+        include_secret=True,
+    )
+
+    node = export_data["workflow"]["graph"]["nodes"][0]["data"]
+    assert node["tools"][0]["credential_id"] == "keep"
+
+
 def test_append_workflow_export_data_rewrites_knowledge_dataset_ids(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
 ):

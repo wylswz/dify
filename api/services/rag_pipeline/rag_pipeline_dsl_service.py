@@ -28,6 +28,7 @@ from core.workflow.llm_environment_variable import (
     should_resolve_llm_model_selector,
 )
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
+from core.workflow.nodes.intent_executor.entities import INTENT_EXECUTOR_NODE_TYPE
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from extensions.ext_redis import redis_client
@@ -714,6 +715,10 @@ class RagPipelineDslService:
             # filter credential id from agent node
             if not include_secret and data_type == BuiltinNodeTypes.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
+                    tool.pop("credential_id", None)
+            # filter credential id from intent executor node tools
+            if not include_secret and data_type == INTENT_EXECUTOR_NODE_TYPE:
+                for tool in node_data.get("tools", []):
                     tool.pop("credential_id", None)
 
         export_data["workflow"] = workflow_dict

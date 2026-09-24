@@ -73,6 +73,11 @@ export const BLOCKS = [
   },
   {
     classification: BlockClassification.Default,
+    type: BlockEnum.IntentExecutor,
+    title: 'Intent Executor',
+  },
+  {
+    classification: BlockClassification.Default,
     type: BlockEnum.LLM,
     title: 'LLM',
   },

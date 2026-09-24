@@ -198,6 +198,28 @@ def test_extract_workflow_dependencies_includes_plugin_nodes(monkeypatch: pytest
     ]
 
 
+def test_extract_workflow_dependencies_includes_intent_executor_node() -> None:
+    graph = {
+        "nodes": [
+            {
+                "data": {
+                    "type": "intent-executor",
+                    "model": {"provider": "acme/llm/llm", "name": "model", "mode": "chat"},
+                    "intents": ["start", "intents"],
+                    "tools": [
+                        {"type": "builtin", "provider_name": "acme/search", "tool_name": "search"},
+                    ],
+                }
+            }
+        ]
+    }
+
+    assert AppDslService._extract_dependencies_from_workflow_graph(graph) == [
+        "acme/llm",
+        "acme/search",
+    ]
+
+
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _workflow(
         graph={

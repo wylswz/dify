@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
+from core.workflow.nodes.intent_executor.entities import INTENT_EXECUTOR_NODE_TYPE
 from extensions.ext_redis import redis_client
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -574,6 +575,10 @@ class SnippetDslService:
             # filter credential id from agent node
             if not include_secret and data_type == BuiltinNodeTypes.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
+                    tool.pop("credential_id", None)
+            # filter credential id from intent executor node tools
+            if not include_secret and data_type == INTENT_EXECUTOR_NODE_TYPE:
+                for tool in node_data.get("tools", []):
                     tool.pop("credential_id", None)
 
         export_data["workflow"] = workflow_dict

@@ -28,6 +28,7 @@ const blockTypeMap: Record<string, BlockEnum> = {
   'http-request': BlockEnum.HttpRequest,
   'human-input': BlockEnum.HumanInput,
   'if-else': BlockEnum.IfElse,
+  'intent-executor': BlockEnum.IntentExecutor,
   iteration: BlockEnum.Iteration,
   'iteration-start': BlockEnum.IterationStart,
   'knowledge-index': BlockEnum.KnowledgeBase,

@@ -29,6 +29,7 @@ import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-e
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
 import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
+import IntentExecutorDefault from '@/app/components/workflow/nodes/intent-executor/default'
 import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
 import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
 import LLMDefault from '@/app/components/workflow/nodes/llm/default'
@@ -79,6 +80,7 @@ const { checkValid: checkToolValid } = ToolDefault
 const { checkValid: checkVariableAssignerValid } = VariableAssigner
 const { checkValid: checkAssignerValid } = Assigner
 const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
+const { checkValid: checkIntentExecutorValid } = IntentExecutorDefault
 const { checkValid: checkIterationValid } = IterationDefault
 const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
 const { checkValid: checkLoopValid } = LoopDefault
@@ -97,6 +99,7 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.VariableAssigner]: checkAssignerValid,
   [BlockEnum.VariableAggregator]: checkVariableAssignerValid,
   [BlockEnum.ParameterExtractor]: checkParameterExtractorValid,
+  [BlockEnum.IntentExecutor]: checkIntentExecutorValid,
   [BlockEnum.Iteration]: checkIterationValid,
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,

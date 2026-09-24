@@ -1,4 +1,5 @@
 import type { IfElseNodeType } from '../nodes/if-else/types'
+import type { IntentExecutorNodeType } from '../nodes/intent-executor/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type { QuestionClassifierNodeType } from '../nodes/question-classifier/types'
@@ -303,6 +304,11 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
 
     if (node.data.type === BlockEnum.ParameterExtractor)
       (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
+
+    if (node.data.type === BlockEnum.IntentExecutor) {
+      const intentExecutorData = node.data as IntentExecutorNodeType
+      intentExecutorData.model.provider = correctModelProvider(intentExecutorData.model.provider)
+    }
 
     if (node.data.type === BlockEnum.HttpRequest && !node.data.retry_config) {
       node.data.retry_config = {

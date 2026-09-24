@@ -420,6 +420,25 @@ def test_extract_dependencies_from_workflow_graph_covers_plugin_and_model_nodes(
     ]
 
 
+def test_extract_dependencies_from_workflow_graph_includes_intent_executor(
+    service: RagPipelineDslService,
+) -> None:
+    graph: dict[str, Any] = {
+        "nodes": [
+            {
+                "data": {
+                    "type": "intent-executor",
+                    "model": {"provider": "acme/llm/llm", "name": "model", "mode": "chat"},
+                    "intents": ["start", "intents"],
+                    "tools": [{"type": "builtin", "provider_name": "acme/search", "tool_name": "search"}],
+                }
+            }
+        ]
+    }
+
+    assert service._extract_dependencies_from_workflow_graph(graph) == ["acme/llm", "acme/search"]
+
+
 def test_extract_dependencies_from_workflow_graph_covers_knowledge_variants(
     monkeypatch: pytest.MonkeyPatch, service: RagPipelineDslService
 ) -> None:

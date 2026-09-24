@@ -1,5 +1,5 @@
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from werkzeug.exceptions import NotFound
@@ -9,6 +9,7 @@ from core.helper import marketplace
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from core.workflow.nodes.intent_executor.entities import INTENT_EXECUTOR_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
 from models.provider_ids import GenericProviderID, ModelProviderID, ToolProviderID
 
@@ -37,6 +38,21 @@ class DependenciesAnalysisService:
                 return [plugin_id]
             return []
 
+        if node_type == INTENT_EXECUTOR_NODE_TYPE:
+            dependencies = []
+            model = node_data.get("model")
+            if isinstance(model, Mapping):
+                provider = model.get("provider")
+                if isinstance(provider, str) and provider:
+                    try:
+                        dependencies.append(cls.analyze_model_provider_dependency(provider))
+                    except (ValueError, NotFound):
+                        pass
+            tools = node_data.get("tools")
+            if isinstance(tools, list):
+                dependencies.extend(cls._extract_tool_dependencies(tools))
+            return dependencies
+
         if node_type != BuiltinNodeTypes.AGENT or node_data.get("agent_node_kind") == "dify_agent":
             return []
 
@@ -57,23 +73,34 @@ class DependenciesAnalysisService:
         for parameter in parameters.values():
             if not isinstance(parameter, Mapping) or not isinstance(parameter.get("value"), list):
                 continue
-            for tool in parameter["value"]:
-                if not isinstance(tool, Mapping):
-                    continue
-                provider_type = tool.get("provider_type", tool.get("type"))
-                if provider_type not in (None, "builtin", "plugin"):
-                    continue
-                plugin_id = tool.get("plugin_id")
-                if isinstance(plugin_id, str) and plugin_id:
-                    dependencies.append(plugin_id)
-                    continue
-                provider = tool.get("provider_id") or tool.get("provider_name") or tool.get("provider")
-                if not isinstance(provider, str):
-                    continue
-                try:
-                    dependencies.append(cls.analyze_tool_provider_reference(provider))
-                except (ValueError, NotFound):
-                    pass
+            dependencies.extend(cls._extract_tool_dependencies(parameter["value"]))
+        return dependencies
+
+    @classmethod
+    def _extract_tool_dependencies(cls, tools: Sequence[Any]) -> list[str]:
+        """Extract tool provider plugin ids from serialized tool configs.
+
+        Only builtin/plugin tool providers resolve to plugin dependencies; api,
+        workflow and mcp providers are workspace-local and are skipped.
+        """
+        dependencies = []
+        for tool in tools:
+            if not isinstance(tool, Mapping):
+                continue
+            provider_type = tool.get("provider_type", tool.get("type"))
+            if provider_type not in (None, "builtin", "plugin"):
+                continue
+            plugin_id = tool.get("plugin_id")
+            if isinstance(plugin_id, str) and plugin_id:
+                dependencies.append(plugin_id)
+                continue
+            provider = tool.get("provider_id") or tool.get("provider_name") or tool.get("provider")
+            if not isinstance(provider, str):
+                continue
+            try:
+                dependencies.append(cls.analyze_tool_provider_reference(provider))
+            except (ValueError, NotFound):
+                pass
         return dependencies
 
     @classmethod

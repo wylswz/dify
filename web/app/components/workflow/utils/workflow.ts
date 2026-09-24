@@ -18,6 +18,7 @@ export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
     nodeType === BlockEnum.Iteration ||
     nodeType === BlockEnum.Agent ||
     nodeType === BlockEnum.AgentV2 ||
+    nodeType === BlockEnum.IntentExecutor ||
     nodeType === BlockEnum.DocExtractor ||
     nodeType === BlockEnum.Loop ||
     nodeType === BlockEnum.Start ||

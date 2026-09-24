@@ -24,6 +24,8 @@ import HumanInputNode from './human-input/node'
 import HumanInputPanel from './human-input/panel'
 import IfElseNode from './if-else/node'
 import IfElsePanel from './if-else/panel'
+import IntentExecutorNode from './intent-executor/node'
+import IntentExecutorPanel from './intent-executor/panel'
 import IterationNode from './iteration/node'
 import IterationPanel from './iteration/panel'
 import KnowledgeBaseNode from './knowledge-base/node'
@@ -100,6 +102,7 @@ export const NodeComponentMap = {
   [BlockEnum.ListFilter]: ListFilterNode,
   [BlockEnum.Agent]: WorkflowAgentNode,
   [BlockEnum.AgentV2]: AgentV2Node,
+  [BlockEnum.IntentExecutor]: IntentExecutorNode,
   [BlockEnum.DataSource]: DataSourceNode,
   [BlockEnum.KnowledgeBase]: KnowledgeBaseNode,
   [BlockEnum.HumanInput]: HumanInputNode,
@@ -131,6 +134,7 @@ export const PanelComponentMap = {
   [BlockEnum.ListFilter]: ListFilterPanel,
   [BlockEnum.Agent]: WorkflowAgentPanel,
   [BlockEnum.AgentV2]: AgentV2Panel,
+  [BlockEnum.IntentExecutor]: IntentExecutorPanel,
   [BlockEnum.DataSource]: DataSourcePanel,
   [BlockEnum.KnowledgeBase]: KnowledgeBasePanel,
   [BlockEnum.HumanInput]: HumanInputPanel,

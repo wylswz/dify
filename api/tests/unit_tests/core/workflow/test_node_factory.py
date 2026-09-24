@@ -544,6 +544,35 @@ class TestDifyNodeFactoryCreateNode:
         assert "tool_file_manager_factory" not in kwargs
         factory._bound_tool_file_manager_factory.assert_called_once_with()
 
+    def test_intent_executor_node_receives_invoker(self, monkeypatch: pytest.MonkeyPatch, factory) -> None:
+        from core.workflow.nodes.intent_executor import IntentExecutorNode
+        from tests.workflow_test_utils import build_test_graph_init_params
+
+        factory.graph_init_params = build_test_graph_init_params()
+        factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
+        invoker_cls = MagicMock(return_value=sentinel.invoker)
+        monkeypatch.setattr(node_factory, "IntentExecutorInvoker", invoker_cls)
+
+        node_config = {
+            "id": "intent-executor-node",
+            "data": {
+                "type": "intent-executor",
+                "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                "intents": ["src", "intents"],
+                "tools": [{"provider_name": "provider", "tool_name": "tool_a"}],
+            },
+        }
+        result = factory.create_node(node_config)
+
+        assert isinstance(result, IntentExecutorNode)
+        assert result._invoker is sentinel.invoker
+        invoker_cls.assert_called_once()
+        invoker_kwargs = invoker_cls.call_args.kwargs
+        assert invoker_kwargs["run_context"] is factory._dify_context
+        assert invoker_kwargs["model_instance"] is sentinel.model_instance
+        assert invoker_kwargs["request_metadata"] == {"app_id": "app-id"}
+        assert invoker_kwargs["model_parameters"] == {}
+
     def test_build_llm_compatible_node_init_kwargs_preserves_structured_output_switch(self, factory):
         node_data = LLMNodeData.model_validate(
             {

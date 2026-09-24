@@ -6,6 +6,7 @@ import documentExtractorDefault from '@/app/components/workflow/nodes/document-e
 import httpRequestDefault from '@/app/components/workflow/nodes/http/default'
 import humanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import ifElseDefault from '@/app/components/workflow/nodes/if-else/default'
+import intentExecutorDefault from '@/app/components/workflow/nodes/intent-executor/default'
 import iterationStartDefault from '@/app/components/workflow/nodes/iteration-start/default'
 import iterationDefault from '@/app/components/workflow/nodes/iteration/default'
 import knowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
@@ -25,6 +26,7 @@ export const WORKFLOW_COMMON_NODES = [
   knowledgeRetrievalDefault,
   agentDefault,
   agentV2Default,
+  intentExecutorDefault,
   questionClassifierDefault,
   ifElseDefault,
   iterationDefault,
