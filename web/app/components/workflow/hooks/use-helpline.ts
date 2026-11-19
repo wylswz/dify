@@ -127,7 +127,6 @@ export const useHelpline = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
 
-  // Check if a node is an entry node (Start or Trigger)
   const isEntryNode = useCallback((node: Node): boolean => {
     return isTriggerNode(node.data.type) || node.data.type === BlockEnum.Start
   }, [])
@@ -164,7 +163,6 @@ export const useHelpline = () => {
         }
       }
 
-      // Get the actual alignment position for the dragging node
       const nodeAlignPos = getNodeAlignPosition(node)
 
       const showHorizontalHelpLineNodes = getAlignedNodes({

@@ -277,7 +277,6 @@ export const useNodesInteractions = () => {
       const newNodes = produce(nodes, (draft) => {
         const currentNode = draft.find((n) => n.id === node.id)!
 
-        // Check if current dragging node is an entry node
         const isCurrentEntryNode =
           isTriggerNode(node.data.type) || node.data.type === BlockEnum.Start
 

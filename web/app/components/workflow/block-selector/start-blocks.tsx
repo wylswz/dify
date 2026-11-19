@@ -50,7 +50,6 @@ const StartBlocks = ({
   const previewDescriptionBaseId = useId()
 
   const filteredBlocks = useMemo(() => {
-    // Check if Start node already exists in workflow
     const hasStartNode = nodes.some(
       (node) => (node.data as CommonNodeType)?.type === BlockEnumValues.Start,
     )
@@ -73,7 +72,6 @@ const StartBlocks = ({
       )
         return false
 
-      // Filter by search text
       const displayName = getDisplayName(block.type).toLowerCase()
       if (
         !displayName.includes(normalizedSearch) &&
