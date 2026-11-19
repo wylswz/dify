@@ -56,10 +56,8 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
         WorkflowRun instance
     """
     logger.debug("_dict_to_workflow_run: data keys=%s", list(data.keys())[:5])
-    # Create model instance without session
     model = WorkflowRun()
 
-    # Map all required fields with validation
     # Critical fields - must not be None
     model.id = data.get("id") or ""
     model.tenant_id = data.get("tenant_id") or ""
@@ -108,7 +106,6 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     model.outputs = data.get("outputs")
     model.error = data.get("error_message") or data.get("error")
 
-    # Handle datetime fields
     # Every branch must yield naive UTC, matching what the database path stores.
     # Mixing naive local time and aware values here breaks the elapsed_time subtraction below.
     started_at = data.get("started_at") or data.get("created_at")
@@ -121,7 +118,6 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
             case _:
                 model.created_at = ensure_naive_utc(started_at)
     else:
-        # Provide default created_at if missing
         model.created_at = naive_utc_now()
 
     finished_at = data.get("finished_at")
@@ -267,7 +263,6 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             limit,
             status,
         )
-        # Convert triggered_from to list if needed
         if isinstance(triggered_from, (WorkflowRunTriggeredFrom, str)):
             triggered_from_list = [triggered_from]
         else:
@@ -277,7 +272,6 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         escaped_tenant_id = escape_identifier(tenant_id)
         escaped_app_id = escape_identifier(app_id)
 
-        # Build triggered_from filter with escaped values
         # Support both enum and string values for triggered_from
         triggered_from_filter = " OR ".join(
             [
@@ -286,7 +280,6 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             ]
         )
 
-        # Build status filter with escaped value
         status_filter = f"AND status='{escape_sql_string(status)}'" if status else ""
 
         # Build last_id filter for pagination
@@ -317,12 +310,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 sql=sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore, from_time=None, to_time=None
             )
 
-            # Check if there are more records
             has_more = len(results) > limit
             if has_more:
                 results = results[:limit]
 
-            # Convert results to WorkflowRun models
             workflow_runs = [_dict_to_workflow_run(row) for row in results]
             return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
 

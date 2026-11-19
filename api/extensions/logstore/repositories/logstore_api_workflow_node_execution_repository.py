@@ -48,10 +48,8 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         Relationship fields (like offload_data) are not loaded from LogStore.
     """
     logger.debug("_dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
-    # Create model instance without session
     model = WorkflowNodeExecutionModel()
 
-    # Map all required fields with validation
     # Critical fields - must not be None
     model.id = data.get("id") or ""
     model.tenant_id = data.get("tenant_id") or ""
@@ -96,12 +94,10 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
     model.error = data.get("error")
     model.execution_metadata = data.get("execution_metadata")
 
-    # Handle datetime fields
     # Every branch must yield naive UTC, matching what the database path stores.
     created_at = data.get("created_at")
     match created_at:
         case None:
-            # Provide default created_at if missing
             model.created_at = naive_utc_now()
         case str():
             model.created_at = ensure_naive_utc(datetime.fromisoformat(created_at))
