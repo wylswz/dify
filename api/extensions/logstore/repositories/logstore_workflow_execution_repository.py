@@ -85,15 +85,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         self._enable_put_graph_field = dify_config.LOGSTORE_ENABLE_PUT_GRAPH_FIELD
 
     def _to_logstore_model(self, domain_model: WorkflowExecution, *, log_version: int) -> list[tuple[str, str]]:
-        """
-        Convert a domain model to a logstore model (List[Tuple[str, str]]).
-
-        Args:
-            domain_model: The domain model to convert
-
-        Returns:
-            The logstore model as a list of key-value tuples
-        """
+        """Encode a workflow execution for LogStore."""
         logger.debug(
             "_to_logstore_model: id=%s, workflow_id=%s, status=%s",
             domain_model.id_,
@@ -171,17 +163,10 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
 
     @override
     def save(self, execution: WorkflowExecution) -> None:
-        """
-        Save or update a WorkflowExecution domain entity to the logstore.
+        """Persist a workflow execution in this repository's tenant scope.
 
-        This method serves as a domain-to-logstore adapter that:
-        1. Converts the domain entity to its logstore representation
-        2. Persists the logstore model using Aliyun SLS
-        3. Maintains proper multi-tenancy by including tenant context during conversion
-        4. Optionally writes to SQL database for dual-write support (controlled by LOGSTORE_DUAL_WRITE_ENABLED)
-
-        Args:
-            execution: The WorkflowExecution domain entity to persist
+        If dual-write is enabled, also attempt the SQL history write. A SQL failure
+        does not invalidate a successful LogStore write.
         """
         logger.debug(
             "save: id=%s, workflow_id=%s, status=%s", execution.id_, execution.workflow_id, execution.status.value

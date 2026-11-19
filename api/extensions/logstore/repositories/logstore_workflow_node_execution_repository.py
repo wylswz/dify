@@ -41,15 +41,7 @@ _JSON_DICT_ADAPTER: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecution:
-    """
-    Convert LogStore result dictionary to WorkflowNodeExecution domain model.
-
-    Args:
-        data: Dictionary from LogStore query result
-
-    Returns:
-        WorkflowNodeExecution domain model instance
-    """
+    """Decode a LogStore query row."""
     logger.debug("_dict_to_workflow_node_execution: data keys=%s", list(data.keys())[:5])
     # Parse JSON fields
     inputs = _JSON_DICT_ADAPTER.validate_json(data.get("inputs") or "{}")
@@ -254,20 +246,10 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
     @override
     def save(self, execution: WorkflowNodeExecution) -> None:
-        """
-        Save or update a NodeExecution domain entity to LogStore.
+        """Append a versioned node execution record in this repository's tenant scope.
 
-        This method serves as a domain-to-logstore adapter that:
-        1. Converts the domain entity to its logstore representation
-        2. Appends a new record with a log_version timestamp
-        3. Maintains proper multi-tenancy by including tenant context during conversion
-        4. Optionally writes to SQL database for dual-write support (controlled by LOGSTORE_DUAL_WRITE_ENABLED)
-
-        Each save operation creates a new record. Updates are simulated by writing
-        new records with higher log_version numbers.
-
-        Args:
-            execution: The NodeExecution domain entity to persist
+        If dual-write is enabled, also attempt the SQL history write. A SQL failure
+        does not invalidate a successful LogStore write.
         """
         logger.debug(
             "save: id=%s, node_execution_id=%s, status=%s",
@@ -375,23 +357,10 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         *,
         include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
-        """
-        Retrieve all node executions for a workflow execution.
-        Paused nodes are always included; include_paused accepts the shared resume-read contract.
-        Uses LogStore SQL query with window function to get the latest version of each node execution.
-        This ensures we only get the most recent version of each node execution record.
-        Args:
-            workflow_execution_id: The workflow execution identifier
-            order_config: Optional configuration for ordering results
-                order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
-                order_config.order_direction: Direction to order ("asc" or "desc")
+        """Read the latest version of each node execution in this repository's scope.
 
-        Returns:
-            A list of workflow node execution instances
-
-        Note:
-            This method uses ROW_NUMBER() window function partitioned by node_execution_id
-            to get the latest version (highest log_version) of each node execution.
+        Paused nodes are always included, regardless of `include_paused`, which is
+        accepted for compatibility with the shared repository interface.
         """
         logger.debug(
             "get_by_workflow_execution: workflow_execution_id=%s, order_config=%s",

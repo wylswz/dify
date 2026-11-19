@@ -34,19 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNodeExecutionModel:
-    """
-    Convert LogStore result dictionary to WorkflowNodeExecutionModel instance.
-
-    Args:
-        data: Dictionary from LogStore query result
-
-    Returns:
-        WorkflowNodeExecutionModel instance (detached from session)
-
-    Note:
-        The returned model is not attached to any SQLAlchemy session.
-        Relationship fields (like offload_data) are not loaded from LogStore.
-    """
+    """Decode a LogStore row without attaching the model to a session or loading relationships."""
     logger.debug("_dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
     # Create model instance without session
     model = WorkflowNodeExecutionModel()

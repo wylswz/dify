@@ -46,15 +46,7 @@ logger = logging.getLogger(__name__)
 
 
 def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
-    """
-    Convert LogStore result dictionary to WorkflowRun instance.
-
-    Args:
-        data: Dictionary from LogStore query result
-
-    Returns:
-        WorkflowRun instance
-    """
+    """Decode a LogStore workflow run row."""
     logger.debug("_dict_to_workflow_run: data keys=%s", list(data.keys())[:5])
     # Create model instance without session
     model = WorkflowRun()
@@ -244,21 +236,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         last_id: str | None = None,
         status: str | None = None,
     ) -> InfiniteScrollPagination:
-        """
-        Get paginated workflow runs with filtering.
+        """List matching workflow runs in the given tenant and app scope.
 
-        Uses window function for deduplication to support both running and finished states.
-
-        Args:
-            tenant_id: Tenant identifier for multi-tenant isolation
-            app_id: Application identifier
-            triggered_from: Filter by trigger source(s)
-            limit: Maximum number of records to return (default: 20)
-            last_id: Cursor for pagination - ID of the last record from previous page
-            status: Optional filter by status
-
-        Returns:
-            InfiniteScrollPagination object
+        Only the latest matching version of each run is returned. The `last_id`
+        cursor is accepted but not applied by this backend.
         """
         logger.debug(
             "get_paginated_workflow_runs: tenant_id=%s, app_id=%s, limit=%d, status=%s",
