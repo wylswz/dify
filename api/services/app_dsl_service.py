@@ -211,13 +211,11 @@ class AppDslService:
         self._warnings = []
         import_id = str(uuid.uuid4())
 
-        # Validate import mode
         try:
             mode = ImportMode(import_mode)
         except ValueError as caught_error:
             raise ValueError(f"Invalid import_mode: {import_mode}") from caught_error
 
-        # Get YAML content
         content: str = ""
         if mode == ImportMode.YAML_URL:
             if not yaml_url:
@@ -269,9 +267,7 @@ class AppDslService:
                     error="File size exceeds the limit of 10MB",
                 )
 
-        # Process YAML content
         try:
-            # Parse YAML to validate format
             data = yaml.safe_load(content)
             if not isinstance(data, dict):
                 return Import(
@@ -294,7 +290,6 @@ class AppDslService:
                 raise ValueError(f"Invalid version type, expected str, got {type(imported_version)}")
             status = check_version_compatibility(imported_version, CURRENT_DSL_VERSION)
 
-            # Extract app data
             app_data = data.get("app")
             if not app_data:
                 return Import(
@@ -385,7 +380,6 @@ class AppDslService:
                     imported_dsl_version=imported_version,
                 )
 
-            # Extract dependencies
             dependencies = data.get("dependencies", [])
             check_dependencies_pending_data = None
             if dependencies:
@@ -401,7 +395,6 @@ class AppDslService:
                     dependencies_list
                 )
 
-            # Create or update app
             app_created = app is None
             app = self._create_or_update_app(
                 app=app,
@@ -508,7 +501,6 @@ class AppDslService:
             if app is not None:
                 self._validate_workflow_overwrite(app, data)
 
-            # Create or update app
             app_created = app is None
             app = self._create_or_update_app(
                 app=app,
@@ -524,7 +516,6 @@ class AppDslService:
                 preserve_agent_bindings=pending_data.preserve_agent_bindings,
             )
 
-            # Delete import info from Redis
             redis_client.delete(redis_key)
 
             return Import(
@@ -559,16 +550,13 @@ class AppDslService:
 
     @staticmethod
     def check_app_dependencies(*, tenant_id: str, app_id: str) -> CheckDependenciesResult:
-        # Get dependencies from Redis
         redis_key = f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_id}"
         dependencies = redis_client.get(redis_key)
         if not dependencies:
             return CheckDependenciesResult()
 
-        # Extract dependencies
         dependencies = CheckDependenciesPendingData.model_validate_json(dependencies)
 
-        # Get leaked dependencies
         leaked_dependencies = DependenciesAnalysisService.get_leaked_dependencies(
             tenant_id=tenant_id, dependencies=dependencies.dependencies
         )
@@ -695,7 +683,6 @@ class AppDslService:
         if target_tenant_id is None:
             raise ValueError("Current tenant is not set")
 
-        # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
         resolved_icon_type: IconType
         if icon_type_value in [IconType.EMOJI, IconType.IMAGE, IconType.LINK]:
@@ -713,7 +700,6 @@ class AppDslService:
             icon = DEFAULT_ICON
 
         if app:
-            # Update existing app
             app.name = name or app_data.get("name", app.name)
             app.description = description or app_data.get("description", app.description)
             app.icon_type = resolved_icon_type
@@ -722,7 +708,6 @@ class AppDslService:
             app.updated_by = account.id
             app.updated_at = naive_utc_now()
         else:
-            # Create new app
             app = App()
             app.id = import_app_id or str(uuid4())
             app.tenant_id = target_tenant_id
@@ -755,11 +740,9 @@ class AppDslService:
                 allow_premium_settings=allow_premium_site_settings,
             )
 
-        # save dependencies
         if dependencies:
             self.cache_import_dependencies(app_id=app.id, dependencies=dependencies)
 
-        # Initialize app based on mode
         match app_mode:
             case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
                 workflow_data = data.get("workflow")
@@ -860,13 +843,11 @@ class AppDslService:
                         account_id=account.id,
                     )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
-                # Initialize model config
                 model_config = data.get("model_config")
                 if not model_config or not isinstance(model_config, dict):
                     raise ValueError("Missing model_config for chat/agent-chat/completion app")
                 SuggestedQuestionsAfterAnswerConfigManager.validate_optional_fields(model_config)
                 TextToSpeechConfigManager.validate_optional_fields(model_config)
-                # Initialize or update model config
                 app_model_config = (
                     self._session.get(AppModelConfig, app.app_model_config_id) if app.app_model_config_id else None
                 )
